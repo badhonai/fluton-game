@@ -201,16 +201,19 @@ try{
   __els['bReset'].onclick();
   assert(store.data.unlocked===1 && !store.data.stars[0],'reset clears progress on confirm');
 
-  /* hearts branch */
+  /* hearts branch (asset now ships — hide it to test the text fallback) */
   Game.load(0);
+  const heartImg=Assets.imgs.ui_heart;
+  delete Assets.imgs.ui_heart;
   Game.lives=2; Game._lh=undefined;
   Game.updateHUD();
   assert(__els['hLives'].textContent.indexOf('♥')>=0 || __els['hLives'].innerHTML.indexOf('♥')>=0,
     'hearts fallback renders without ui_heart');
-  Assets.imgs.ui_heart={width:16,height:16}; Game._lh=undefined;
+  if(heartImg)Assets.imgs.ui_heart=heartImg; else Assets.imgs.ui_heart={width:16,height:16};
+  Game._lh=undefined;
   Game.updateHUD();
   assert(__els['hLives'].innerHTML.indexOf('<img')>=0,'heart icons render when asset present');
-  delete Assets.imgs.ui_heart; Game._lh=undefined;
+  if(heartImg)Assets.imgs.ui_heart=heartImg; Game._lh=undefined;
 
   /* ---------- mobile / touch / portrait ---------- */
   global.__mq.coarse=true;

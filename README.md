@@ -26,7 +26,8 @@ glass-house-heist/
 │   └── manifest.json     # machine-readable copy of src/manifest.js
 ├── tools/
 │   ├── slice_assets.py   # pipeline: magenta-key → despill → slice → trim → manifest
-│   └── build.py          # → dist/standalone.html (all inlined, data-URI PNGs)
+│   ├── build.py          # → dist/standalone.html (all inlined, data-URI PNGs)
+│   └── qa/               # headless Node harness: stubs + regression suites + runner
 └── dist/standalone.html  # self-contained build for sandboxed previews
 ```
 
