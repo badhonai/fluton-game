@@ -179,6 +179,195 @@ window.GHH_MANIFEST={
    "ay": 1.0,
    "w": 151,
    "h": 170
+  },
+  "prop_plant": {
+   "file": "assets/props/plant.png",
+   "ax": 0.5,
+   "ay": 1.0,
+   "w": 184,
+   "h": 260
+  },
+  "prop_rack": {
+   "file": "assets/props/rack.png",
+   "ax": 0.5,
+   "ay": 1.0,
+   "w": 185,
+   "h": 260
+  },
+  "prop_glass": {
+   "file": "assets/props/glass.png",
+   "ax": 0.5,
+   "ay": 1.0,
+   "w": 225,
+   "h": 260
+  },
+  "prop_sign": {
+   "file": "assets/props/sign.png",
+   "ax": 0.5,
+   "ay": 1.0,
+   "w": 260,
+   "h": 240
+  },
+  "prop_pipe": {
+   "file": "assets/props/pipe.png",
+   "ax": 0.5,
+   "ay": 1.0,
+   "w": 260,
+   "h": 135
+  },
+  "prop_cone": {
+   "file": "assets/props/cone.png",
+   "ax": 0.5,
+   "ay": 1.0,
+   "w": 202,
+   "h": 260
+  },
+  "ui_star": {
+   "file": "assets/ui/star.png",
+   "ax": 0.5,
+   "ay": 0.5,
+   "w": 96,
+   "h": 91
+  },
+  "ui_star_empty": {
+   "file": "assets/ui/star_empty.png",
+   "ax": 0.5,
+   "ay": 0.5,
+   "w": 96,
+   "h": 94
+  },
+  "ui_clock": {
+   "file": "assets/ui/clock.png",
+   "ax": 0.5,
+   "ay": 0.5,
+   "w": 95,
+   "h": 96
+  },
+  "ui_eye": {
+   "file": "assets/ui/eye.png",
+   "ax": 0.5,
+   "ay": 0.5,
+   "w": 96,
+   "h": 63
+  },
+  "ui_sound": {
+   "file": "assets/ui/sound.png",
+   "ax": 0.5,
+   "ay": 0.5,
+   "w": 96,
+   "h": 81
+  },
+  "ui_mute": {
+   "file": "assets/ui/mute.png",
+   "ax": 0.5,
+   "ay": 0.5,
+   "w": 96,
+   "h": 77
+  },
+  "ui_pause": {
+   "file": "assets/ui/pause.png",
+   "ax": 0.5,
+   "ay": 0.5,
+   "w": 77,
+   "h": 96
+  },
+  "ui_play": {
+   "file": "assets/ui/play.png",
+   "ax": 0.5,
+   "ay": 0.5,
+   "w": 79,
+   "h": 96
+  },
+  "ui_replay": {
+   "file": "assets/ui/replay.png",
+   "ax": 0.5,
+   "ay": 0.5,
+   "w": 96,
+   "h": 96
+  },
+  "ui_home": {
+   "file": "assets/ui/home.png",
+   "ax": 0.5,
+   "ay": 0.5,
+   "w": 96,
+   "h": 88
+  },
+  "ui_heart": {
+   "file": "assets/ui/heart.png",
+   "ax": 0.5,
+   "ay": 0.5,
+   "w": 96,
+   "h": 89
+  },
+  "ui_lock": {
+   "file": "assets/ui/lock.png",
+   "ax": 0.5,
+   "ay": 0.5,
+   "w": 76,
+   "h": 96
+  },
+  "fx_spark": {
+   "file": "assets/fx/spark.png",
+   "ax": 0.5,
+   "ay": 0.5,
+   "w": 104,
+   "h": 110
+  },
+  "fx_burst": {
+   "file": "assets/fx/burst.png",
+   "ax": 0.5,
+   "ay": 0.5,
+   "w": 99,
+   "h": 110
+  },
+  "fx_dust": {
+   "file": "assets/fx/dust.png",
+   "ax": 0.5,
+   "ay": 0.5,
+   "w": 110,
+   "h": 104
+  },
+  "fx_ring": {
+   "file": "assets/fx/ring.png",
+   "ax": 0.5,
+   "ay": 0.5,
+   "w": 109,
+   "h": 110
+  },
+  "fx_glitch": {
+   "file": "assets/fx/glitch.png",
+   "ax": 0.5,
+   "ay": 0.5,
+   "w": 110,
+   "h": 105
+  },
+  "fx_dots": {
+   "file": "assets/fx/dots.png",
+   "ax": 0.5,
+   "ay": 0.5,
+   "w": 110,
+   "h": 109
+  },
+  "fx_cross": {
+   "file": "assets/fx/cross.png",
+   "ax": 0.5,
+   "ay": 0.5,
+   "w": 110,
+   "h": 107
+  },
+  "fx_plus": {
+   "file": "assets/fx/plus.png",
+   "ax": 0.5,
+   "ay": 0.5,
+   "w": 100,
+   "h": 105
+  },
+  "vault": {
+   "file": "assets/env/vault_door.png",
+   "ax": 0.5,
+   "ay": 1.0,
+   "w": 188,
+   "h": 300
   }
  },
  "cat": {
