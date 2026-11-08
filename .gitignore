@@ -1,3 +1,5 @@
 # generated QA runners
 tools/qa/_run_*.js
+tools/qa/_smoke*.cjs
 __pycache__/
+node_modules/
