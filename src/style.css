@@ -47,7 +47,9 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
   justify-content:center;text-align:center;z-index:20;padding:24px;
   background:radial-gradient(ellipse at 50% 28%,rgba(7,9,20,.74),rgba(3,4,10,.95));
-  backdrop-filter:blur(3px);overflow:hidden}
+  backdrop-filter:blur(3px);overflow:hidden;
+  animation:screenin .26s cubic-bezier(.2,.8,.3,1) both}
+@keyframes screenin{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
 .kicker{font-size:11px;letter-spacing:.55em;color:var(--cy);font-weight:700;
   text-shadow:0 0 14px rgba(61,245,224,.5)}
 .h1s{font-size:clamp(24px,4vw,40px);font-weight:900;letter-spacing:.18em;color:#fff;margin-top:8px;
