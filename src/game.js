@@ -155,16 +155,10 @@ const Input=(()=>{const down={},press={};
   },{passive:false});
   window.addEventListener('keyup',e=>{const a=MAP[e.code];if(a){e.preventDefault();set(a,false);}},{passive:false});
   window.addEventListener('blur',()=>{if(Game.state==='play')Game.pause();Input.clear();});
-  /* touch buttons */
-  document.querySelectorAll('.tbtn').forEach(b=>{
-    const act=b.dataset.act;
-    const on=e=>{e.preventDefault();gesture();set(act,true);b.classList.add('held');};
-    const off=e=>{e.preventDefault();set(act,false);b.classList.remove('held');};
-    b.addEventListener('pointerdown',on);b.addEventListener('pointerup',off);
-    b.addEventListener('pointercancel',off);b.addEventListener('pointerleave',off);
-    b.addEventListener('contextmenu',e=>e.preventDefault());
-  });
-  return {down:a=>!!down[a],pressed:a=>!!press[a],clear,consume(){for(const k in press)press[k]=false;},gesture};
+  /* touch input arrives from React controls via setTouch */
+  return {down:a=>!!down[a],pressed:a=>!!press[a],clear,
+    consume(){for(const k in press)press[k]=false;},gesture,
+    setTouch(act,isDown){gesture();set(act,isDown);}};
 })();
 
 /* ================= 4 · LEVELS ================= */
@@ -396,19 +390,15 @@ const Game={
     this.regenT=0;this.encHintT=0;this.exitHintT=0;this.loadT=.6;
     FX.clear();this.queue=[];this.gearScore=0;
     showScreen(null);
-    $('hud').classList.remove('hidden');
-    if(!keepState)this.state='play';
-    else this.state='play';
+    this.state='play';
     Input.clear();
     this.updateHUD();
     this.toast(L.def.lesson,4.2);
-    if(isCoarsePortrait())$('rotate').style.display='flex';
   },
-  pause(){if(this.state!=='play')return;this.state='pause';Input.clear();$('scr-pause').classList.remove('hidden');},
-  resume(){if(this.state!=='pause')return;this.state='play';$('scr-pause').classList.add('hidden');Input.clear();},
+  pause(){if(this.state!=='play')return;this.state='pause';Input.clear();showScreen('scr-pause');},
+  resume(){if(this.state!=='pause')return;this.state='play';Input.clear();showScreen(null);},
   togglePause(){if(this.state==='play')this.pause();else if(this.state==='pause')this.resume();},
-  gameOver(){this.state='over';Input.clear();$('hud').classList.add('hidden');
-    $('scr-over').classList.remove('hidden');},
+  gameOver(){this.state='over';Input.clear();showScreen('scr-over');},
   complete(){
     if(this.state!=='play')return;
     this.state='complete';Input.clear();
@@ -428,54 +418,31 @@ const Game={
       if(store.data.unlocked<this.levelIdx+2){store.data.unlocked=this.levelIdx+2;SFX.unlock();}
     }
     store.save();
-    $('hud').classList.add('hidden');
-    /* fill complete screen */
-    $('cKicker').textContent='VAULT CRACKED · LEVEL '+(this.levelIdx+1);
-    $('cTitle').textContent=this.alarms===0?'CLEAN GETAWAY':'GOT AWAY WITH IT';
-    const br=$('cBreak');br.innerHTML='';
-    rows.forEach(r=>{const d=document.createElement('div');d.className='brow';
-      d.innerHTML='<span>'+r[0]+'</span><b>+'+r[1]+'</b>';br.appendChild(d);});
-    const t=document.createElement('div');t.className='brow total';
-    t.innerHTML='<span>TOTAL</span><b id="cTotal">0</b>';br.appendChild(t);
-    const finalScore=this.score;
-    const t0=(performance&&performance.now)?performance.now():Date.now();
-    const countUp=()=>{
-      const now=(performance&&performance.now)?performance.now():Date.now();
-      const k=clamp((now-t0)/700,0,1);
-      const el=document.getElementById('cTotal');
-      if(!el)return;
-      el.textContent=Math.round(finalScore*(1-Math.pow(1-k,3)));
-      if(k<1)requestAnimationFrame(countUp); else el.textContent=finalScore;
-    };
-    requestAnimationFrame(countUp);
-    /* award chips */
-    const aw=$('cAwards'); aw.innerHTML='';
+    /* hand a plain result object to the React complete screen */
     const chips=[];
     if(allNotes)chips.push({src:'assets/pickups/note.png',label:'ALL INTENTS',cls:''});
     if(this.alarms===0)chips.push({src:Assets.has('ui_eye')?'assets/ui/eye.png':'assets/pickups/star.png',label:'CLEAN RUN',cls:'gold'});
     if(this.time<=L.def.par)chips.push({src:Assets.has('ui_clock')?'assets/ui/clock.png':'assets/pickups/star.png',label:'UNDER PAR',cls:'violet'});
-    chips.forEach((cw,i)=>{const d=document.createElement('div');d.className='award '+cw.cls;
-      d.style.animationDelay=(0.55+i*0.15)+'s';
-      d.innerHTML='<img src="'+cw.src+'" alt="" onerror="this.remove()"><span>'+cw.label+'</span>';
-      aw.appendChild(d);});
-    const starEls=$('cStars').querySelectorAll('.star');
-    starEls.forEach(s=>s.classList.remove('on'));
-    $('bNext').textContent=this.levelIdx+1<LEVELS.length?'NEXT LEVEL →':'FINISH HEIST';
-    $('scr-complete').classList.remove('hidden');
+    this.result={
+      kicker:'VAULT CRACKED · LEVEL '+(this.levelIdx+1),
+      title:this.alarms===0?'CLEAN GETAWAY':'GOT AWAY WITH IT',
+      rows,total:this.score,stars,awards:chips,
+      nextLabel:this.levelIdx+1<LEVELS.length?'NEXT LEVEL →':'FINISH HEIST'};
+    showScreen('scr-complete');
     SFX.win();
-    starEls.forEach((s,i)=>{if(i<stars)setTimeout(()=>{s.classList.add('on');SFX.star(i);},350+i*380);});
+    for(let i=0;i<stars;i++)
+      setTimeout(()=>{if(this.state==='complete')SFX.star(i);},350+i*380);
   },
 
   /* ---- toast queue ---- */
   toast(html,dur){this.queue.push({html,dur:dur||3});if(this.queue.length===1)this._showToast();},
   _showToast(){
-    if(!this.queue.length){$('toast').classList.remove('on');return;}
+    if(!this.queue.length){UI.set({toast:null});return;}
     this._cur=this.queue[0];
-    $('toast').innerHTML=this._cur.html;
-    $('toast').classList.add('on');
+    UI.set({toast:this._cur.html});
     this.toastT=this._cur.dur;},
   tickToast(dt){if(this.toastT<=0)return;this.toastT-=dt;
-    if(this.toastT<=0){this.queue.shift();this._cur=null;$('toast').classList.remove('on');
+    if(this.toastT<=0){this.queue.shift();this._cur=null;UI.set({toast:null});
       if(this.queue.length)setTimeout(()=>this._showToast(),250);}},
 
   /* ---- damage / alarm ---- */
@@ -499,37 +466,28 @@ const Game={
   /* ---- HUD ---- */
   updateHUD(){
     const L=this.L;if(!L)return;
-    $('hLevel').textContent='L'+(this.levelIdx+1)+' · '+L.def.name;
-    const got=this.notes.filter(n=>n.got).length+'/'+this.notes.length;
-    if(got!==this._got){this._got=got;$('hNotes').textContent=got;}
-    let lh;
-    if(Assets.has('ui_heart')){
-      lh='';
-      for(let i=0;i<CFG.LIVES;i++)
-        lh+='<img src="assets/ui/heart.png" class="'+(i<this.lives?'':'off')+'" alt="life" onerror="this.remove()">';
-    }else lh='♥'.repeat(this.lives)+'♡'.repeat(CFG.LIVES-this.lives);
-    if(lh!==this._lh){this._lh=lh;const el=$('hLives');
-      if(lh.charAt(0)==='<')el.innerHTML=lh;else el.textContent=lh;}
-    $('hScore').textContent=this.score;
-    $('hTime').textContent=fmtTime(this.time);
-    const e=this.cat?this.cat.energy:100;
-    $('engBar').style.width=e+'%';
-    $('engWrap').classList.toggle('low',e<25);
-    const yn='×'+this.yarnCount;
-    if(yn!==this._yn){this._yn=yn;$('hYarnN').textContent=yn;}
-    $('hYarn').classList.toggle('empty',this.yarnCount<=0);
-    $('hEnc').classList.toggle('on',!!(this.cat&&this.cat.enc));
-    const dB=$('detBox');
-    dB.classList.toggle('on',this.det>0.01);
-    $('detBar').style.width=(this.det*100)+'%';
+    /* discrete values -> store (React re-renders only when one changes) */
+    const d={level:'L'+(this.levelIdx+1)+' · '+L.def.name,
+      notes:this.notes.filter(n=>n.got).length+'/'+this.notes.length,
+      lives:this.lives,score:this.score,time:fmtTime(this.time),yarn:this.yarnCount};
+    const prev=UI.get().hud;
+    if(!prev||prev.level!==d.level||prev.notes!==d.notes||prev.lives!==d.lives||
+       prev.score!==d.score||prev.time!==d.time||prev.yarn!==d.yarn)
+      UI.set({hud:d});
+    /* per-frame bars/badges -> direct DOM refs (no React churn at 60fps) */
+    const r=UI.refs,e=this.cat?this.cat.energy:100;
+    if(r.engBar)r.engBar.style.width=e+'%';
+    if(r.engWrap)r.engWrap.classList.toggle('low',e<25);
+    if(r.detBar)r.detBar.style.width=(this.det*100)+'%';
+    if(r.detBox)r.detBox.classList.toggle('on',this.det>0.01);
+    if(r.hEnc)r.hEnc.classList.toggle('on',!!(this.cat&&this.cat.enc));
   }
 };
 
 function isCoarsePortrait(){return window.matchMedia('(pointer:coarse)').matches&&window.innerHeight>window.innerWidth;}
 function toggleSound(){
   const m=!SFX.isMuted();SFX.setMuted(m);
-  const txt='♪ SOUND: '+(m?'OFF':'ON');
-  $('bSoundT').textContent=txt;$('bSoundP').textContent=txt;
+  UI.set({muted:m});
 }
 
 /* ================= 8 · WORLD SIMULATION ================= */
@@ -1543,72 +1501,64 @@ function drawCat(c,o){
   c.restore();
 }
 
-/* ================= 11 · UI WIRING ================= */
+/* ============ 11 · UI STORE (React bridge) ============
+   Immutable snapshots + subscribe — consumed by useSyncExternalStore.
+   Per-frame values (energy/det bars) bypass React via UI.refs registry. */
+const UI=(()=>{
+  const subs=new Set();
+  let st={screen:'loading',loading:0,progressV:0,muted:false,
+    resetArm:false,resetMsg:false,toast:null,
+    coarse:false,portrait:false,hud:null};
+  function set(patch){ st={...st,...patch}; subs.forEach(f=>f()); }
+  return {
+    refs:{},
+    subscribe(fn){subs.add(fn);return()=>subs.delete(fn);},
+    get(){return st;},
+    set
+  };
+})();
+
+/* ================= 12 · UI WIRING ================= */
 function showScreen(id){
-  ['scr-title','scr-select','scr-how','scr-pause','scr-complete','scr-over']
-    .forEach(s=>$(s).classList.add('hidden'));
-  if(id)$(id).classList.remove('hidden');
+  const map={'scr-title':'title','scr-select':'select','scr-how':'how',
+    'scr-pause':'pause','scr-complete':'complete','scr-over':'over'};
+  UI.set({screen:id?(map[id]||'play'):'play'});
 }
-function setSoundLabels(){
-  const txt='♪ SOUND: '+(SFX.isMuted()?'OFF':'ON');
-  $('bSoundT').textContent=txt;$('bSoundP').textContent=txt;
-}
-function buildLevelGrid(){
-  const g=$('lvGrid');g.innerHTML='';
-  LEVELS.forEach((L,i)=>{
-    const unlocked=i<store.data.unlocked;
-    const st=store.data.stars[i]||0;
-    const card=document.createElement('button');
-    card.className='lvcard'+(unlocked?'':' lock')+(i===Game.levelIdx?' cur':'');
-    card.innerHTML='<div class="n">LEVEL '+(i+1)+'</div><div class="t">'+L.name+'</div>'+
-      '<div class="st">'+[0,1,2].map(k=>'<img src="assets/pickups/star.png" class="'+(k<st?'on':'')+
-        '" alt="star" onerror="this.remove()">').join('')+'</div>'+
-      '<div class="best">'+(store.data.scores[i]?'BEST '+store.data.scores[i]:'—')+'</div>';
-    card.onclick=()=>{SFX.click();Game.load(i);};
-    g.appendChild(card);
-  });
-  $('tProg').textContent='progress: '+store.data.unlocked+'/'+LEVELS.length+' levels · '+
-    Object.values(store.data.stars).reduce((a,b)=>a+b,0)+'/15 stars';
-}
-function uiInit(){
-  const click=fn=>e=>{SFX.resume();SFX.click();fn(e);};
-  $('bPlay').onclick=click(()=>Game.startRun());
-  $('bLevels').onclick=click(()=>{buildLevelGrid();Game.state='select';showScreen('scr-select');});
-  $('bHow').onclick=click(()=>{Game.state='how';showScreen('scr-how');});
-  $('bSoundT').onclick=click(()=>toggleSound());
-  const rb=$('bReset');
-  if(rb)rb.onclick=click(()=>{
-    if(rb.dataset.arm){
-      store.data={unlocked:1,stars:{},scores:{}}; store.save(); buildLevelGrid();
-      rb.textContent='PROGRESS RESET'; rb.classList.remove('danger'); delete rb.dataset.arm;
-      setTimeout(()=>{rb.textContent='RESET PROGRESS';},1800);
+function setSoundLabels(){ UI.set({muted:SFX.isMuted()}); }
+function buildLevelGrid(){ UI.set({progressV:UI.get().progressV+1}); }
+/* actions: the single command surface — React buttons and QA both call these */
+const actions={
+  play(){SFX.resume();SFX.click();Game.startRun();},
+  levels(){SFX.resume();SFX.click();buildLevelGrid();Game.state='select';showScreen('scr-select');},
+  how(){SFX.resume();SFX.click();Game.state='how';showScreen('scr-how');},
+  back(){SFX.resume();SFX.click();Game.state='title';showScreen('scr-title');buildLevelGrid();},
+  sound(){SFX.resume();SFX.click();toggleSound();},
+  reset(){
+    SFX.click();
+    if(UI.get().resetArm){
+      store.data={unlocked:1,stars:{},scores:{}};store.save();
+      UI.set({resetArm:false,resetMsg:true,progressV:UI.get().progressV+1});
+      setTimeout(()=>{if(UI.get().resetMsg)UI.set({resetMsg:false});},1800);
     }else{
-      rb.dataset.arm='1'; rb.textContent='CONFIRM?'; rb.classList.add('danger');
-      setTimeout(()=>{if(rb.dataset.arm){delete rb.dataset.arm;
-        rb.textContent='RESET PROGRESS';rb.classList.remove('danger');}},2600);
-    }
-  });
-  $('bSoundP').onclick=click(()=>toggleSound());
-  $('bSelBack').onclick=click(()=>{Game.state='title';showScreen('scr-title');buildLevelGrid();});
-  $('bHowBack').onclick=click(()=>{Game.state='title';showScreen('scr-title');});
-  $('btnPause').onclick=click(()=>Game.togglePause());
-  $('bResume').onclick=click(()=>Game.resume());
-  $('bRestart').onclick=click(()=>{SFX.click();Game.load(Game.levelIdx);});
-  $('bPauseLevels').onclick=click(()=>{Game.state='select';$('scr-pause').classList.add('hidden');
-    buildLevelGrid();showScreen('scr-select');$('hud').classList.add('hidden');});
-  $('bNext').onclick=click(()=>{
+      UI.set({resetArm:true});
+      setTimeout(()=>{if(UI.get().resetArm)UI.set({resetArm:false});},2600);
+    }},
+  pause(){SFX.click();Game.togglePause();},
+  resume(){SFX.click();Game.resume();},
+  restart(){SFX.click();Game.load(Game.levelIdx);},
+  pauseLevels(){SFX.click();Game.state='select';showScreen('scr-select');buildLevelGrid();},
+  next(){
+    SFX.click();
     if(Game.levelIdx+1<LEVELS.length)Game.load(Game.levelIdx+1);
-    else{Game.state='title';showScreen('scr-title');buildLevelGrid();}});
-  $('bRetryC').onclick=click(()=>Game.load(Game.levelIdx));
-  $('bCompLevels').onclick=click(()=>{Game.state='select';buildLevelGrid();showScreen('scr-select');});
-  $('bRetryO').onclick=click(()=>Game.load(Game.levelIdx));
-  $('bOverLevels').onclick=click(()=>{Game.state='select';buildLevelGrid();showScreen('scr-select');});
-  $('bOverTitle').onclick=click(()=>{Game.state='title';showScreen('scr-title');buildLevelGrid();});
-  /* rotate guard */
-  window.addEventListener('resize',()=>{
-    if(Game.state==='play')$('rotate').style.display=isCoarsePortrait()?'flex':'none';
-    else $('rotate').style.display='none';});
-  document.addEventListener('visibilitychange',()=>{if(document.hidden&&Game.state==='play')Game.pause();});
+    else{Game.state='title';showScreen('scr-title');buildLevelGrid();}},
+  retry(){SFX.click();Game.load(Game.levelIdx);},
+  overLevels(){SFX.click();Game.state='select';showScreen('scr-select');buildLevelGrid();},
+  overTitle(){SFX.click();Game.state='title';showScreen('scr-title');buildLevelGrid();},
+  level(i){SFX.resume();SFX.click();Game.load(i);}
+};
+function uiInit(){
+  document.addEventListener('visibilitychange',
+    ()=>{if(document.hidden&&Game.state==='play')Game.pause();});
 }
 
 /* ================= 12 · MAIN LOOP ================= */
@@ -1625,33 +1575,26 @@ function loop(ts){
 function syncTouch(){
   const coarse=window.matchMedia('(pointer:coarse)').matches;
   const play=Game.state==='play';
-  $('touch').classList.toggle('hidden',!(coarse&&play));
-  const rot=$('rotate');
-  if(rot)rot.style.display=(play&&coarse&&isCoarsePortrait())?'flex':'none';
+  const portrait=play&&coarse&&isCoarsePortrait();
+  const s=UI.get();
+  if(s.coarse!==coarse||s.portrait!==portrait||s.play!==play)
+    UI.set({coarse,portrait,play});
 }
 function boot(){
   Render.init();
   uiInit();
-  buildLevelGrid();
   setSoundLabels();
-  showScreen(null);
-  const ld=$('scr-loading'); if(ld) ld.classList.remove('hidden');
   requestAnimationFrame(loop);
-  const t0=(performance&&performance.now)?performance.now():Date.now();
-  Assets.loadAll((d,t)=>{
-    const bar=$('loadBar'); if(bar) bar.style.width=Math.round(d/t*100)+'%';
-    const pct=$('loadPct'); if(pct) pct.textContent=Math.round(d/t*100)+'%';
-  }).then(()=>{
+  Assets.loadAll((d,t)=>UI.set({loading:Math.round(d/t*100)})).then(()=>{
     const elapsed=(performance&&performance.now)?performance.now():Date.now();
-    const wait=Math.max(0,400-elapsed);
-    setTimeout(()=>{
-      if(ld) ld.classList.add('hidden');
-      showScreen('scr-title');
-      buildLevelGrid();
-    }, wait);
+    setTimeout(()=>{showScreen('scr-title');buildLevelGrid();},Math.max(0,400-elapsed));
   });
   /* unlock audio on first gesture anywhere */
   const gest=()=>{SFX.resume();window.removeEventListener('pointerdown',gest);window.removeEventListener('keydown',gest);};
   window.addEventListener('pointerdown',gest);window.addEventListener('keydown',gest);
 }
-boot();
+
+/* engine handle for the React shell (and headless QA) */
+window.__GAME={Game,Assets,Render,Input,UI,LEVELS,LEVEL_DYN,LEVEL_DECOR,store,CFG,actions,
+  SFX,FX,boot,showScreen,buildLevelGrid,setSoundLabels,toggleSound,isCoarsePortrait,
+  catFrameKey,fmtTime,solidAt,losClear,inCone,dist2,drawAsset};
