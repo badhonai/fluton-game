@@ -55,6 +55,7 @@ global.window={
   AudioContext:undefined, webkitAudioContext:undefined, console
 };
 global.navigator={userAgent:'headless'};
+global.window.__NO_MOUNT=1; /* React bundle must not mount in headless tests */
 global.Image=class{
   set src(v){ this._src=String(v);
     this.width=512;this.height=512;

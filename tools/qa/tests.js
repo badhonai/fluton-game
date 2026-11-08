@@ -1,20 +1,20 @@
-/* ============ GLASS HOUSE HEIST — HEADLESS QA SUITE ============ */
+/* ============ GLASS HOUSE HEIST — HEADLESS ENGINE QA (React build) ============ */
 function assert(cond,msg){ if(!cond){ console.error("FAIL:",msg); process.exitCode=1; throw new Error(msg);} else console.log("  ok:",msg); }
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const {Game,Assets,Render,Input,UI,store,actions,catFrameKey,CFG}=window.__GAME;
 (async()=>{
 try{
-  /* ---------- boot & assets ---------- */
+  window.__GAME.boot();
   await sleep(750); /* preload + min-display timeout */
   assert(Game.state==='title','boots to title');
+  assert(UI.get().screen==='title','store screen=title after load');
+  assert(UI.get().loading===100,'loading progress reached 100');
   assert(Assets.ready===true,'assets finished loading');
   assert(Assets.total>=50,'manifest has >=50 images (got '+Assets.total+')');
-  assert(Assets.loaded===Assets.total,'all manifest images resolved (loaded='+Assets.loaded+')');
+  assert(Assets.loaded===Assets.total,'all manifest images resolved');
   assert(Object.keys(Assets.failed).length===0,'no manifest asset failed');
-  assert(__els['scr-loading'].classList.contains('hidden'),'loading screen hidden after load');
-  assert(!__els['scr-title'].classList.contains('hidden'),'title screen visible');
   assert(Assets.has('cat_idle')&&Assets.has('bg_title')&&Assets.has('plat_top')&&Assets.has('face'),
     'key sprites present (cat/bg/platform)');
-  /* missing-asset resilience */
   window.GHH_MANIFEST.images.__bogus={file:'missing_x.png'};
   await Assets.loadAll();
   assert(Assets.failed.__bogus==='missing_x.png','missing asset recorded, loadAll still resolves');
@@ -26,10 +26,12 @@ try{
     assert(Game.L && Game.L.spawn,'L'+(i+1)+' parses');
     assert(Game.notes.length>=3,'L'+(i+1)+' has '+Game.notes.length+' notes');
     assert(Game.exit,'L'+(i+1)+' has exit');
-    assert(Game.state==='play','L'+(i+1)+' state=play');
+    assert(Game.state==='play' && UI.get().screen==='play','L'+(i+1)+' state=play');
     __tick(30);
     assert(Game.cat.y < Game.L.levelH+60,'L'+(i+1)+' cat on ground (y='+Math.round(Game.cat.y)+')');
     assert(Game.decor && Array.isArray(Game.decor),'L'+(i+1)+' decor table loaded');
+    assert(UI.get().hud && UI.get().hud.notes==='0/'+Game.notes.length,
+      'L'+(i+1)+' hud store synced (notes '+UI.get().hud.notes+')');
   }
 
   /* ---------- movement / jump / land ---------- */
@@ -78,6 +80,7 @@ try{
   let n=Game.notes[0];
   Game.cat.x=n.x; Game.cat.y=n.y+15; Game.cat.vx=0; __tick(3);
   assert(n.got===true,'note collected in plaintext (score='+Game.score+')');
+  assert(UI.get().hud.notes==='1/'+Game.notes.length,'hud store notes updated');
   Game.load(0);
   n=Game.notes[0];
   __emitKey('KeyE',true); Game.cat.energy=100;
@@ -139,21 +142,25 @@ try{
   Game.notes.forEach(nn=>nn.got=true);
   Game.cat.x=Game.exit.x+18; Game.cat.y=Game.exit.y+36;
   __tick(120);
-  assert(Game.state==='complete','level completes');
+  assert(Game.state==='complete' && UI.get().screen==='complete','level completes');
   assert((store.data.stars[0]||0)>=1,'stars saved: '+store.data.stars[0]);
   assert(store.data.unlocked>=2,'next level unlocked: '+store.data.unlocked);
-  assert(__els['scr-complete'].classList.contains('hidden')===false,'complete screen visible');
-  assert($('cAwards').children.length>0,'award chips rendered ('+$('cAwards').children.length+')');
-  assert(document.getElementById('cTotal'),'score count-up element exists');
-  __els['bNext'].onclick();
+  assert(Game.result && Game.result.rows.length>0,'result object handed to React');
+  assert(Game.result.awards.length>0,'award chips computed ('+Game.result.awards.length+')');
+  assert(Game.result.nextLabel==='NEXT LEVEL →','next label computed');
+  actions.next();
   assert(Game.state==='play' && Game.levelIdx===1,'NEXT LEVEL -> L2');
 
   /* ---------- pause / game over ---------- */
-  Game.togglePause(); assert(Game.state==='pause','pauses');
+  Game.togglePause(); assert(Game.state==='pause' && UI.get().screen==='pause','pauses');
   Game.togglePause(); assert(Game.state==='play','resumes');
   Game.load(0); Game.lives=1; Game.cat.invuln=0;
   Game.hurt('alarm');
   assert(Game.lives===0,'last life lost');
+  await sleep(900);
+  assert(Game.state==='over' && UI.get().screen==='over','gameOver fires (screen=over)');
+  actions.retry();
+  assert(Game.state==='play' && Game.lives===3,'RETRY restarts with fresh lives');
 
   /* ---------- render soak: all levels, mixed input ---------- */
   for(let i=0;i<5;i++){
@@ -174,7 +181,7 @@ try{
     assert(isFinite(Game.cat.x)&&isFinite(Game.cat.y),'L'+(i+1)+' cat finite');
   }
 
-  /* ---------- perf sample (headless proxy) ---------- */
+  /* ---------- perf ---------- */
   Game.load(4);
   const t1=Date.now();
   for(let f=0;f<600;f++)__tick(1);
@@ -182,76 +189,64 @@ try{
   console.log('  perf: '+msPerFrame.toFixed(2)+' ms/frame headless (sim+render)');
   assert(msPerFrame<12,'frame budget respected headlessly');
 
-  /* ---------- screens & buttons ---------- */
-  Game.state='title';
-  __els['bLevels'].onclick(); assert(Game.state==='select','LEVELS opens select');
-  assert(__els['lvGrid'].innerHTML.indexOf('star.png')>=0 || __els['lvGrid'].children.length>0,'level cards built with star art');
-  __els['bSelBack'].onclick(); assert(Game.state==='title','back to title');
-  __els['bHow'].onclick(); assert(Game.state==='how','HOW TO PLAY opens');
-  __els['bHowBack'].onclick(); assert(Game.state==='title','how back');
-  __els['bSoundT'].onclick(); __els['bSoundT'].onclick();
-  assert(__els['bSoundT'].textContent.indexOf('SOUND')>=0,'sound toggle runs');
-  Game.load(0); Game.pause(); __els['bResume'].onclick();
-  assert(Game.state==='play','RESUME button works');
+  /* ---------- screens via actions API ---------- */
+  UI.set({screen:'title'}); Game.state='title';
+  actions.levels(); assert(UI.get().screen==='select','actions.levels opens select');
+  actions.back();   assert(UI.get().screen==='title','actions.back returns title');
+  actions.how();    assert(UI.get().screen==='how','actions.how opens briefing');
+  actions.back();   assert(UI.get().screen==='title','back from how');
+  actions.sound();
+  assert(UI.get().muted===true,'sound toggles to OFF');
+  actions.sound();
+  assert(UI.get().muted===false,'sound toggles back ON');
+  Game.load(0); actions.pause();
+  assert(Game.state==='pause','actions.pause works');
+  actions.resume(); assert(Game.state==='play','actions.resume works');
 
   /* reset progress: two-step */
-  store.data.unlocked=5; store.data.stars[0]=3; buildLevelGrid();
-  __els['bReset'].onclick();
-  assert(__els['bReset'].dataset.arm==='1','reset arms on first click');
-  __els['bReset'].onclick();
-  assert(store.data.unlocked===1 && !store.data.stars[0],'reset clears progress on confirm');
+  store.data.unlocked=5; store.data.stars[0]=3;
+  actions.reset();
+  assert(UI.get().resetArm===true,'reset arms on first call');
+  actions.reset();
+  assert(store.data.unlocked===1 && !store.data.stars[0] && UI.get().resetArm===false,
+    'reset clears progress on confirm');
 
-  /* hearts branch (asset now ships — hide it to test the text fallback) */
-  Game.load(0);
-  const heartImg=Assets.imgs.ui_heart;
-  delete Assets.imgs.ui_heart;
-  Game.lives=2; Game._lh=undefined;
-  Game.updateHUD();
-  assert(__els['hLives'].textContent.indexOf('♥')>=0 || __els['hLives'].innerHTML.indexOf('♥')>=0,
-    'hearts fallback renders without ui_heart');
-  if(heartImg)Assets.imgs.ui_heart=heartImg; else Assets.imgs.ui_heart={width:16,height:16};
-  Game._lh=undefined;
-  Game.updateHUD();
-  assert(__els['hLives'].innerHTML.indexOf('<img')>=0,'heart icons render when asset present');
-  if(heartImg)Assets.imgs.ui_heart=heartImg; Game._lh=undefined;
+  /* hud store hearts/lives */
+  Game.load(0); Game.lives=2; Game.updateHUD();
+  assert(UI.get().hud.lives===2,'hud store lives=2');
+  assert(typeof UI.get().hud.level==='string' && UI.get().hud.level.indexOf('L1')===0,'hud store level label');
 
-  /* ---------- mobile / touch / portrait ---------- */
+  /* ---------- touch / portrait flags ---------- */
   global.__mq.coarse=true;
-  Game.load(0);
-  __tick(3);
-  assert(__els['touch'].classList.contains('hidden')===false,'touch controls shown on coarse pointer');
+  Game.load(0); __tick(3);
+  assert(UI.get().coarse===true && UI.get().screen==='play','coarse pointer + play flags set');
   const startX=Game.cat.x;
-  __els['tRight'].fire('pointerdown',{preventDefault(){}});
-  __tick(30);
-  assert(Game.cat.x>startX+40,'touch D-pad moves cat');
-  __els['tRight'].fire('pointerup',{preventDefault(){}});
-  __els['tJump'].fire('pointerdown',{preventDefault(){}});
-  __tick(6);
+  Input.setTouch('right',true); __tick(30);
+  assert(Game.cat.x>startX+40,'touch input moves cat');
+  Input.setTouch('right',false);
+  Input.setTouch('jump',true); __tick(6);
   assert(Game.cat.y<500,'touch jump works');
-  __els['tJump'].fire('pointerup',{preventDefault(){}});
-  __tick(90);
+  Input.setTouch('jump',false); __tick(90);
   global.__mq.portrait=true;
   __setWH(500,900); __tick(3);
-  assert(__els['rotate'].style.display==='flex','portrait shows rotate hint');
+  assert(UI.get().portrait===true,'portrait flag set (rotate hint source)');
   global.__mq.portrait=false; global.__mq.coarse=false;
   __setWH(1280,720); __tick(3);
-  assert(__els['rotate'].style.display==='none','landscape hides rotate hint');
-  assert(__els['touch'].classList.contains('hidden'),
-    'touch hidden again on fine pointer');
+  assert(UI.get().portrait===false && UI.get().coarse===false,'flags clear on landscape/fine pointer');
 
-  /* ---------- desktop resize ---------- */
+  /* ---------- resize ---------- */
   __setWH(900,500); __tick(3);
   assert(isFinite(Render.vw)&&Render.vw>0,'resize path survives');
   __setWH(1280,720); __tick(3);
 
-  /* ---------- asset fallback for cat ---------- */
+  /* ---------- cat procedural fallback ---------- */
   const keep=Assets.imgs.cat_idle;
   delete Assets.imgs.cat_idle;
   Game.load(0); __tick(10);
   assert(catFrameKey(Game.cat)!==null,'procedural fallback path reachable');
   Assets.imgs.cat_idle=keep;
 
-  console.log('\nALL HEADLESS TESTS PASSED ('+ (Assets.total) +' assets)');
+  console.log('\nALL HEADLESS ENGINE TESTS PASSED ('+Assets.total+' assets)');
 }catch(e){
   console.error('\nTEST ERROR:', (e && e.stack) || e);
   process.exitCode=1;
