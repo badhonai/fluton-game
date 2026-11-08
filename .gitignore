@@ -1,2 +1,3 @@
 # generated QA runners
 tools/qa/_run_*.js
+__pycache__/
