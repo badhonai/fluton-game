@@ -70,20 +70,28 @@ function drawAsset(c,k,x,y,opt){
   c.restore();
   return true;
 }
-const _tint = {cv:null, cx:null};
+/* Cache pre-tinted sprites by source image, size and tint. Encryption can
+   stay active for minutes, so rebuilding this offscreen image every frame
+   needlessly burns CPU and allocates canvas work on mobile GPUs. */
+const _tintCache = new WeakMap();
 function drawTinted(c, im, x, y, w, h, color, alpha){
-  if(!_tint.cv){ _tint.cv = document.createElement('canvas'); _tint.cx = _tint.cv.getContext('2d'); }
   const tw = Math.max(1, Math.ceil(w)), th = Math.max(1, Math.ceil(h));
-  if(_tint.cv.width < tw) _tint.cv.width = tw;
-  if(_tint.cv.height < th) _tint.cv.height = th;
-  const t = _tint.cx;
-  t.clearRect(0,0,tw,th);
-  t.drawImage(im, 0, 0, tw, th);
-  t.globalCompositeOperation = 'source-atop';
-  t.globalAlpha = alpha; t.fillStyle = color;
-  t.fillRect(0,0,tw,th);
-  t.globalAlpha = 1; t.globalCompositeOperation = 'source-over';
-  c.drawImage(_tint.cv, 0, 0, tw, th, x, y, w, h);
+  let variants = _tintCache.get(im);
+  if(!variants){ variants = new Map(); _tintCache.set(im, variants); }
+  const key = tw+'x'+th+'|'+color+'|'+alpha;
+  let tinted = variants.get(key);
+  if(!tinted){
+    tinted = document.createElement('canvas');
+    tinted.width = tw; tinted.height = th;
+    const t = tinted.getContext('2d');
+    t.drawImage(im, 0, 0, tw, th);
+    t.globalCompositeOperation = 'source-atop';
+    t.globalAlpha = alpha; t.fillStyle = color;
+    t.fillRect(0,0,tw,th);
+    t.globalAlpha = 1; t.globalCompositeOperation = 'source-over';
+    variants.set(key, tinted);
+  }
+  c.drawImage(tinted, 0, 0, tw, th, x, y, w, h);
 }
 
 /* ================= 2 · AUDIO ================= */
@@ -476,11 +484,16 @@ const Game={
       UI.set({hud:d});
     /* per-frame bars/badges -> direct DOM refs (no React churn at 60fps) */
     const r=UI.refs,e=this.cat?this.cat.energy:100;
-    if(r.engBar)r.engBar.style.width=e+'%';
-    if(r.engWrap)r.engWrap.classList.toggle('low',e<25);
-    if(r.detBar)r.detBar.style.width=(this.det*100)+'%';
-    if(r.detBox)r.detBox.classList.toggle('on',this.det>0.01);
-    if(r.hEnc)r.hEnc.classList.toggle('on',!!(this.cat&&this.cat.enc));
+    /* Skip unchanged DOM writes: this method runs on every simulation frame. */
+    if(r.engBar&&r._engValue!==e){r.engBar.style.width=e+'%';r._engValue=e;}
+    const low=e<25;
+    if(r.engWrap&&r._engLow!==low){r.engWrap.classList.toggle('low',low);r._engLow=low;}
+    const det=this.det*100;
+    if(r.detBar&&r._detValue!==det){r.detBar.style.width=det+'%';r._detValue=det;}
+    const detOn=this.det>0.01;
+    if(r.detBox&&r._detOn!==detOn){r.detBox.classList.toggle('on',detOn);r._detOn=detOn;}
+    const enc=!!(this.cat&&this.cat.enc);
+    if(r.hEnc&&r._encOn!==enc){r.hEnc.classList.toggle('on',enc);r._encOn=enc;}
   }
 };
 
@@ -774,12 +787,20 @@ const Render={
   cv:null,c:null,dpr:1,scale:1,vw:960,vh:540,W:0,H:0,
   glow:null,vign:null,skyFar:null,skyMid:null,t:0,skySeed:7,
   init(){
-    this.cv=$('cv');this.c=this.cv.getContext('2d');
+    this.cv=$('cv');
+    /* The canvas is fully repainted every frame; an opaque context avoids
+       unnecessary alpha compositing. Keep high-quality smoothing for sprites. */
+    this.c=this.cv.getContext('2d',{alpha:false});
+    this.c.imageSmoothingEnabled=true;
+    this.c.imageSmoothingQuality='high';
     this.resize();window.addEventListener('resize',()=>this.resize());
     this.makeGlow();this.makeVignette();this.makeSky();
   },
   resize(){
-    this.dpr=Math.min(2,window.devicePixelRatio||1);
+    const coarse=window.matchMedia('(pointer:coarse)').matches;
+    /* A 1.5x backing store on touch devices cuts fill-rate and memory cost
+       while preserving crisp rendering at typical phone viewing distances. */
+    this.dpr=Math.min(coarse?1.5:2,window.devicePixelRatio||1);
     this.W=window.innerWidth;this.H=window.innerHeight;
     this.cv.width=Math.floor(this.W*this.dpr);this.cv.height=Math.floor(this.H*this.dpr);
     this.scale=Math.min(this.W/CFG.VIEW_W,this.H/CFG.VIEW_H);
