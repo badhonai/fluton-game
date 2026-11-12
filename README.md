@@ -2,72 +2,73 @@
 
 A multi-game arcade for Fluton, headlined by **Glass House Heist** (a stealth
 platformer starring Fluton's official tuxedo-cat mascot) and **Glass Dash**
-(a one-button endless runner). A console-style home screen shows game icons;
+(a one-button endless runner). Console-style home screen with game icons;
 games are modules with mount/unmount lifecycles over one shared engine.
+
+## Design system (anti-slop rules — enforced by `audit.py`)
+
+- **Mobile-first**: base styles target phones; ≥640px enhances. Safe-area
+  insets, ≥44px targets, coarse-pointer adaptations (HUD lifts above touch
+  buttons), portrait rotate hint + **fullscreen with auto landscape-lock**.
+- **One accent** (cyan), gold = reward, red = danger. Flat surfaces + 1px
+  borders. **No** backdrop blur, gradient text, color-mix glows, or
+  emoji glyphs — the audit fails the build if these reappear.
+- **Icons**: [Lucide](https://lucide.dev) (MIT) stroke icons for all UI
+  chrome — one 24px grid, 2px round strokes. Generated PNGs are reserved for
+  *game art* (character, items, game icons), never UI chrome.
+- **Perf**: world renders only while playing (screens cover the canvas —
+  phones never pay fill-rate for hidden frames), cached sky gradients,
+  sprite-cached tints/glows, DOM writes skipped when unchanged, 1.5× DPR cap
+  on touch devices (from the engine's mobile pass).
 
 ## Architecture
 
 ```
 Arcade shell (React)                Shared engine (src/game.js)
 ────────────────────                ────────────────────────────
-ArcadeApp ── screen router
- HomeScreen ── catalog.json grid    UI store (snapshots) ◄── useSyncExternalStore
- GameHost   ── mounts module        actions{} API (buttons + QA)
-   ├─ GHHModule ── enterArcade/      Assets pool (preloaded once, both games)
-   │   leaveArcade → engine session  SFX (one WebAudio system, gesture-unlocked)
-   └─ GlassDash ── own canvas loop   per-game storage: ghh-save · arcade-dash-best
+ArcadeApp ── screen router          UI store (snapshots) ← useSyncExternalStore
+ HomeScreen ── catalog grid         actions{} API (buttons + QA)
+ GameHost ── mounts module          Assets pool (preloaded once)
+   ├─ GHHModule ── enter/leave      SFX (one WebAudio system)
+   └─ GlassDash ── own loop         storage: ghh-save · arcade-dash-best · arcade-meta
 ```
 
-- **Module registry** (`react-src/arcade/catalog.js`) — one catalog powers the
-  home grid, score lines, and which component mounts. Adding a game = one entry.
-- **Lifecycle** — `enterArcade/leaveArcade` park the engine loop when a game is
-  unmounted; `boot()` is idempotent and rebinds the canvas on each mount.
-- **Shared asset pool** — arcade preloads all art behind its loading screen;
-  both games read the same sprites/backgrounds/particles.
-- **Namespaced storage** — `ghh-save`, `arcade-dash-best`, `arcade-meta`.
-- **Feel values from research** — coyote 0.12s, jump buffer 0.12s, variable
-  jump height, juice proportionality, ±pitch SFX.
+- **Fullscreen** (`ui/fullscreen.js`): Fullscreen API + `screen.orientation.lock('landscape')`
+  where supported (Android Chrome); auto-hidden where impossible (iOS Safari).
+- **Feel values** (research): coyote 0.12s, jump buffer 0.12s, variable jump,
+  juice proportionality, ±pitch SFX.
 
 ## Structure
 
 ```
-├── index.html            # arcade mount + stylesheet + manifest/bundle
+├── index.html            # arcade mount + viewport + manifest/bundle
 ├── react-src/
 │   ├── index.jsx         # createRoot(ArcadeApp) — skipped under __NO_MOUNT
 │   ├── App.jsx           # GHH screen router (hosted inside the arcade)
 │   ├── arcade/           # ArcadeApp · HomeScreen · catalog · store · GHHModule
-│   ├── ui/               # GHH screens, HUD, touch, Logo
-│   └── store.js          # GHH store bridge
-├── games/
-│   ├── GlassDash.jsx     # React host: canvas, HUD, pause, results
-│   └── dash/engine.js    # pure sim + draw (headless-testable)
-├── src/                  # engine · manifest · style · app.js (bundle)
+│   ├── ui/               # screens · HUD · icons (Lucide) · fullscreen · Logo
+│   └── store.js
+├── games/                # GlassDash.jsx + dash/engine.js (pure sim, headless-tested)
+├── src/                  # engine · manifest · style.css · app.js (bundle)
 ├── assets/               # AI art: source sheets + processed frames + arcade icons
 ├── tools/                # slice_assets · build_react · build · qa/
-└── dist/standalone.html  # self-contained arcade (works in sandboxed previews)
+│   └── qa/               # suites: engine · actions · arcade · smoke · audit
+└── dist/                 # standalone.html + index.html (Vercel entry)
 ```
 
 ## Commands
 
 ```bash
 npm ci                    # react, react-dom, esbuild
-npm run build             # esbuild → src/app.js → dist/standalone.html
-npm test                  # 4 suites: engine · actions · arcade · render smoke
+npm run build             # esbuild → src/app.js → dist/{standalone,index}.html
+npm test                  # audit + engine + actions + arcade + render smoke
 ```
-
-## QA (all headless, no browser needed)
-
-- **Engine suite** — full GHH regression: movement, encryption, alarms, bots,
-  yarn, movers, victory, 5-level soak, perf budget.
-- **Actions suite** — every handler throw-free.
-- **Arcade suite** — preload, catalog, enter/exit/re-enter lifecycle, engine
-  parking, Glass Dash sim (jump/coyote/gates/death/best persistence), storage.
-- **Render smoke** — `renderToString` across every screen of both games.
 
 ## Play
 
 - Serve the folder → `/glass-house-heist/` (arcade home with game icons)
 - Or open `dist/standalone.html` in any browser
+- **Fullscreen**: button in the arcade bar, GHH title, GHH HUD, pause menu, Dash HUD
 
-**Glass House Heist** — A/D · Space jump · hold E/Shift encrypt · Q yarn · Esc pause
+**Glass House Heist** — A/D · Space jump · hold E/Shift encrypt · Q yarn · Esc pause · F-style button for fullscreen
 **Glass Dash** — Space / tap jump (hold for height) · R restart · Esc pause

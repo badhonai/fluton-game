@@ -158,10 +158,13 @@ export class DashEngine {
     if(this.shake > 0){
       c.translate((Math.random()-.5) * this.shake * 10, (Math.random()-.5) * this.shake * 10);
     }
-    /* sky */
-    const sky = c.createLinearGradient(0,0,0,H);
-    sky.addColorStop(0,'#0a1024'); sky.addColorStop(.75,'#070b18'); sky.addColorStop(1,'#06080f');
-    c.fillStyle = sky; c.fillRect(-20,-20,W+40,H+40);
+    /* sky (cached — rebuilt only when layout changes) */
+    if(!this._sky || this._skyH !== H){
+      const sky = c.createLinearGradient(0,0,0,H);
+      sky.addColorStop(0,'#0a1024'); sky.addColorStop(.75,'#070b18'); sky.addColorStop(1,'#06080f');
+      this._sky = sky; this._skyH = H;
+    }
+    c.fillStyle = this._sky; c.fillRect(-20,-20,W+40,H+40);
 
     /* parallax (mirrored loop, same trick as the heist) */
     const far = A && A.get ? A.get('bg_far') : null;

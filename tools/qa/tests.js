@@ -148,7 +148,7 @@ try{
   assert(store.data.unlocked>=2,'next level unlocked: '+store.data.unlocked);
   assert(Game.result && Game.result.rows.length>0,'result object handed to React');
   assert(Game.result.awards.length>0,'award chips computed ('+Game.result.awards.length+')');
-  assert(Game.result.nextLabel==='NEXT LEVEL →','next label computed');
+  assert(Game.result.nextLabel==='NEXT LEVEL','next label computed');
   actions.next();
   assert(Game.state==='play' && Game.levelIdx===1,'NEXT LEVEL -> L2');
 

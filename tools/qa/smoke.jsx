@@ -64,7 +64,8 @@ g.UI.set({ hud: { level: 'L1 · THE ATRIUM', notes: '1/3', lives: 2,
 html = renderAt('play');
 ok(html.includes('id="hud"') && html.includes('id="engBar"'), 'HUD renders in play');
 ok(html.includes('1/3') && html.includes('id="hScore"'), 'HUD data present');
-ok(html.includes('♥') || html.includes('♡'), 'hearts render (fallback text without assets)');
+ok(html.includes('id="hLives"') && html.includes('M19 14c1.49'),
+   'hearts render as Lucide heart icons');
 ok(html.includes('id="touch"') && html.includes('ENCRYPT'), 'touch controls render on coarse');
 ok(html.includes('id="btnPause"'), 'pause button in HUD');
 
@@ -75,10 +76,9 @@ html = renderAt('play', { portrait: true, coarse: true });
 ok(html.includes('id="rotate"'), 'rotate hint renders in portrait');
 
 /* hearts with asset present */
-g.Assets.imgs.ui_heart = { width: 16, height: 16 };
 html = renderAt('play', { coarse: false });
-ok(html.includes('assets/ui/heart.png'), 'heart icons render when asset present');
-delete g.Assets.imgs.ui_heart;
+ok(!html.includes('ui_heart.png') && html.includes('M19 14c1.49'),
+   'hearts are vector icons — no PNG heart dependency');
 
 /* ---------- arcade render states ---------- */
 UIA.set({ ready: false, loading: 42 });
@@ -93,16 +93,20 @@ ok(html.includes('PRISM CUBES') && html.includes('SOON'), 'locked cards render w
 ok(html.includes('id="bFeaturedPlay"'), 'featured hero has play CTA');
 ok(html.includes('assets/arcade/ghh-icon.png'), 'game icons referenced');
 ok(html.includes('bSoundA'), 'home sound toggle present');
+ok(html.includes('bFs') && html.includes('M8 3H5a2'), 'fullscreen button on home');
 
 g.UI.set({ arcade: true, screen: 'title' });
 UIA.set({ screen: 'game', gameId: 'ghh' });
 html = renderToString(<ArcadeApp/>);
 ok(html.includes('arcade-host') && html.includes('id="cv"'), 'GHH hosts canvas inside arcade');
 ok(html.includes('bBackArcade'), 'GHH title offers ARCADE back button');
+ok(html.includes('bFs'), 'fullscreen button on GHH title');
+ok(!/♪|🔒|★|◈|👁|🧶|↻|◀|▶/.test(html), 'no emoji glyphs in rendered markup');
 
 UIA.set({ screen: 'game', gameId: 'dash' });
 html = renderToString(<ArcadeApp/>);
 ok(html.includes('dash-cv') && html.includes('SCORE') && html.includes('bDashPause'), 'Glass Dash renders canvas + HUD');
+ok(html.includes('M14 4h4v16h-4z'), 'dash pause uses real pause icon');
 
 UIA.set({ screen: 'home', gameId: null });
 g.UI.set({ arcade: false, screen: 'loading' });

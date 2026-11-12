@@ -428,14 +428,14 @@ const Game={
     store.save();
     /* hand a plain result object to the React complete screen */
     const chips=[];
-    if(allNotes)chips.push({src:'assets/pickups/note.png',label:'ALL INTENTS',cls:''});
-    if(this.alarms===0)chips.push({src:Assets.has('ui_eye')?'assets/ui/eye.png':'assets/pickups/star.png',label:'CLEAN RUN',cls:'gold'});
-    if(this.time<=L.def.par)chips.push({src:Assets.has('ui_clock')?'assets/ui/clock.png':'assets/pickups/star.png',label:'UNDER PAR',cls:'violet'});
+    if(allNotes)chips.push({icon:'file-text',label:'ALL INTENTS',cls:''});
+    if(this.alarms===0)chips.push({icon:'eye',label:'CLEAN RUN',cls:'gold'});
+    if(this.time<=L.def.par)chips.push({icon:'clock',label:'UNDER PAR',cls:'violet'});
     this.result={
       kicker:'VAULT CRACKED · LEVEL '+(this.levelIdx+1),
       title:this.alarms===0?'CLEAN GETAWAY':'GOT AWAY WITH IT',
       rows,total:this.score,stars,awards:chips,
-      nextLabel:this.levelIdx+1<LEVELS.length?'NEXT LEVEL →':'FINISH HEIST'};
+      nextLabel:this.levelIdx+1<LEVELS.length?'NEXT LEVEL':'FINISH HEIST'};
     showScreen('scr-complete');
     SFX.win();
     for(let i=0;i<stars;i++)
@@ -852,9 +852,12 @@ const Render={
 
   drawSkyLayers(c, camX){
     const W=this.W, H=this.H;
-    const grd=c.createLinearGradient(0,0,0,H);
-    grd.addColorStop(0,'#0a1024'); grd.addColorStop(.72,'#070b18'); grd.addColorStop(1,'#06080f');
-    c.fillStyle=grd; c.fillRect(0,0,W,H);
+    if(!this._skyGrad||this._skyGradH!==H){
+      const grd=c.createLinearGradient(0,0,0,H);
+      grd.addColorStop(0,'#0a1024'); grd.addColorStop(.72,'#070b18'); grd.addColorStop(1,'#06080f');
+      this._skyGrad=grd; this._skyGradH=H;
+    }
+    c.fillStyle=this._skyGrad; c.fillRect(0,0,W,H);
     /* Deterministic, low-cost star field adds depth without per-frame random
        allocations or image assets. Slow parallax keeps it behind the action. */
     for(let i=0;i<72;i++){
@@ -1226,14 +1229,16 @@ const Render={
       c.strokeStyle='rgba(61,245,224,.8)';c.lineWidth=2;c.setLineDash([6,6]);
       c.lineDashOffset=-this.t*30;
       rr(c,-10,-16,20,32,4);c.stroke();c.setLineDash([]);
-      c.fillStyle='#3df5e0';c.font='bold 16px ui-monospace,monospace';c.textAlign='center';
-      c.fillText('▶',1,6);
+      c.fillStyle='#3df5e0';
+      c.beginPath();c.moveTo(-4,-6);c.lineTo(6,0);c.lineTo(-4,6);c.closePath();c.fill();
     }else{
-      c.fillStyle='#8fa0cc';c.font='bold 13px ui-monospace,monospace';c.textAlign='center';
-      c.fillText('🔒',0,-2);
-      c.font='bold 11px ui-monospace,monospace';c.fillStyle='#ff8aa0';
+      /* padlock glyph (no emoji) */
+      c.strokeStyle='#8fa0cc';c.lineWidth=2;
+      c.beginPath();c.arc(0,-4,4.5,Math.PI,0);c.stroke();
+      c.fillStyle='#8fa0cc';rr(c,-6.5,-2,13,10,2);c.fill();
+      c.font='bold 11px ui-monospace,monospace';c.textAlign='center';c.fillStyle='#ff8aa0';
       const got=Game.notes.filter(n=>n.got).length;
-      c.fillText(got+'/'+Game.notes.length,0,16);
+      c.fillText(got+'/'+Game.notes.length,0,18);
     }
     c.restore();
     if(open){c.fillStyle='rgba(61,245,224,.9)';c.font='bold 9px ui-monospace,monospace';
@@ -1623,11 +1628,14 @@ function loop(ts){
   requestAnimationFrame(loop);
   const dt=Math.min(.05,(ts-lastTs)/1000||0);lastTs=ts;
   if(!active)return;
-  if(Game.state==='play')updateGame(dt);
-  else if(Game.state==='title'||Game.state==='select'||Game.state==='how')FX.update(dt);
-  Input.consume();
-  syncTouch();
-  Render.frame(dt);
+  if(Game.state==='play'){
+    updateGame(dt);Input.consume();syncTouch();Render.frame(dt);return;
+  }
+  Input.consume();syncTouch();
+  if(Game.state==='title'||Game.state==='select'||Game.state==='how')FX.update(dt);
+  /* Every non-play screen fully covers the canvas — skip world rendering
+     beneath it so phones don't burn fill-rate on hidden frames. The canvas
+     keeps its last frame (a freeze-frame behind pause and results). */
 }
 function syncTouch(){
   const coarse=window.matchMedia('(pointer:coarse)').matches;

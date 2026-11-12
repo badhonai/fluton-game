@@ -104,6 +104,14 @@ try{
   assert(fail===0,'arcade-reachable actions are throw-free');
   G.leaveArcade();
 
+  /* ---------- fullscreen + auto-rotate ---------- */
+  assert(window.__FS && window.__FS.supported(),'fullscreen supported (stub)');
+  window.__FS.toggle();
+  assert(window.__FS.is()===true,'fullscreen engaged');
+  assert(screen.orientation.locked==='landscape','auto landscape lock attempted on fullscreen');
+  window.__FS.toggle();
+  assert(window.__FS.is()===false,'fullscreen released');
+
   console.log('\nARCADE SUITE PASSED');
 }catch(e){
   console.error('\nARCADE TEST ERROR:',(e&&e.stack)||e);

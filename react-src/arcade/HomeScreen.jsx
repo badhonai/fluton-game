@@ -2,13 +2,15 @@ import { useState } from 'react';
 import { UIA, ghh, hideImg } from './store.js';
 import { GAMES } from './catalog.js';
 import { Logo } from '../ui/Logo.jsx';
+import { Icon } from '../ui/icons.jsx';
+import FullscreenBtn from '../ui/FullscreenBtn.jsx';
 
 function totalStars(){
   try{ return Object.values(ghh().store.data.stars).reduce((a,b)=>a+b,0); }
   catch(e){ return 0; }
 }
 
-function scoreLine(g, st){
+function scoreLine(g){
   if(g.status === 'soon') return 'LOCKED';
   if(g.id === 'ghh') return totalStars() + ' / 15 STARS';
   try{
@@ -27,12 +29,12 @@ function GameCard({ g, st, onPlay }){
             onClick={() => !soon && onPlay(g.id)}>
       <div className="card-art">
         <img src={g.icon} alt="" onError={hideImg}/>
-        {soon && <div className="card-lock">🔒 SOON</div>}
+        {soon && <div className="card-lock"><Icon name="lock" size={13}/> SOON</div>}
         {!soon && last && <div className="card-badge">RECENT</div>}
       </div>
       <div className="card-title">{g.title}</div>
       <div className="card-tag">{g.tag}</div>
-      <div className="card-score">{scoreLine(g, st)}</div>
+      <div className="card-score">{scoreLine(g)}</div>
     </button>
   );
 }
@@ -41,7 +43,7 @@ export default function HomeScreen({ st }){
   const g = ghh();
   const [muted, setMuted] = useState(() => g.SFX.isMuted());
   const featured = GAMES.find(x => x.status === 'playable' &&
-    (st.meta.last || {})[x.id] && (st.meta.last[x.id] > 0)) || GAMES[0];
+    (st.meta.last || {})[x.id]) || GAMES[0];
   const play = id => { g.SFX.resume(); g.SFX.click(); UIA.enter(id); };
   const toggleMute = () => { g.toggleSound(); setMuted(g.SFX.isMuted()); };
   const others = GAMES.filter(x => x.id !== featured.id);
@@ -51,10 +53,12 @@ export default function HomeScreen({ st }){
       <header className="arcade-bar">
         <div className="arcade-brand"><Logo className="fmark"/><span>FLUTON ARCADE</span></div>
         <div className="arcade-bar-right">
-          <span className="arcade-chip">★ {totalStars()} / 15</span>
+          <span className="arcade-chip"><Icon name="star" size={13} fill/> {totalStars()} / 15</span>
           <button className="btn chipbtn" id="bSoundA" onClick={toggleMute}>
-            ♪ SOUND: {muted ? 'OFF' : 'ON'}
+            <Icon name={muted ? 'volume-x' : 'volume-2'} size={13}/>
+            SOUND: {muted ? 'OFF' : 'ON'}
           </button>
+          <FullscreenBtn/>
         </div>
       </header>
 
@@ -67,7 +71,9 @@ export default function HomeScreen({ st }){
             <div className="kicker">{(st.meta.last || {})[featured.id] ? 'CONTINUE' : 'FEATURED'}</div>
             <h2>{featured.title}</h2>
             <p>{featured.blurb}</p>
-            <span className="btn primary" id="bFeaturedPlay">▶ PLAY</span>
+            <span className="btn primary" id="bFeaturedPlay">
+              <Icon name="play" size={15} fill/> PLAY
+            </span>
           </div>
           <img className="featured-icon" src={featured.icon} alt="" onError={hideImg}/>
         </section>
@@ -80,7 +86,7 @@ export default function HomeScreen({ st }){
         </section>
 
         <footer className="arcade-foot">
-          a FLUTON project · every game shares one engine, one QA harness, one cat —
+          a FLUTON project · one engine, one QA harness, one cat —
           <a href="https://fluton.io" target="_blank" rel="noopener"> fluton.io</a>
         </footer>
       </div>

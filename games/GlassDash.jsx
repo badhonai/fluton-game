@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { DashEngine, DASH_BEST_KEY } from './dash/engine.js';
 if(typeof window!=='undefined'){ window.__DASH = DashEngine; window.__DASH_KEY = DASH_BEST_KEY; }
 import { hideImg } from '../react-src/arcade/store.js';
+import { Icon } from '../react-src/ui/icons.jsx';
 
 /* Glass Dash — React host: canvas loop, HUD, pause & results overlays.
    mount/unmount lifecycle = effect cleanup (arcade-safe). */
@@ -140,10 +141,12 @@ export default function GlassDash({ onExit }){
         <div className="dash-best"><label>BEST</label>
           <b>{(() => { try{ return localStorage.getItem(DASH_BEST_KEY)||'0'; }catch(e){ return '0'; } })()}</b>
         </div>
-        <button className="dash-pause" id="bDashPause"
+        <button className="dash-pause" id="bDashPause" aria-label="Pause"
           onClick={() => { const p = phaseRef.current;
             if(p === 'run'){ pausedRef.current = true; setPhase('paused'); phaseRef.current = 'paused'; }
-            else if(p === 'paused'){ pausedRef.current = false; setPhase('run'); phaseRef.current = 'run'; } }}>II</button>
+            else if(p === 'paused'){ pausedRef.current = false; setPhase('run'); phaseRef.current = 'run'; } }}>
+          <Icon name="pause" size={15}/>
+        </button>
       </div>
 
       {phase === 'run' && (
@@ -155,8 +158,12 @@ export default function GlassDash({ onExit }){
           <div className="pausecard">
             <h2>PAUSED</h2>
             <button className="btn primary" id="bDashResume"
-              onClick={() => { pausedRef.current = false; setPhase('run'); phaseRef.current = 'run'; }}>RESUME</button>
-            <button className="btn ghost" id="bDashHome" onClick={onExit}>ARCADE HOME</button>
+              onClick={() => { pausedRef.current = false; setPhase('run'); phaseRef.current = 'run'; }}>
+              <Icon name="play" size={14} fill/> RESUME
+            </button>
+            <button className="btn ghost" id="bDashHome" onClick={onExit}>
+              <Icon name="home" size={14}/> ARCADE HOME
+            </button>
           </div>
         </div>
       )}
@@ -177,8 +184,10 @@ export default function GlassDash({ onExit }){
               eng.reset();
               if(window.__GAME && window.__GAME.FX) window.__GAME.FX.clear();
               shownResultsReset();
-            }}>RUN AGAIN</button>
-            <button className="btn ghost" id="bDashHome2" onClick={onExit}>ARCADE HOME</button>
+            }}><Icon name="rotate-ccw" size={14}/> RUN AGAIN</button>
+            <button className="btn ghost" id="bDashHome2" onClick={onExit}>
+              <Icon name="home" size={14}/> ARCADE HOME
+            </button>
           </div>
         </div>
       )}

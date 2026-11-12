@@ -55,6 +55,29 @@ global.window={
   AudioContext:undefined, webkitAudioContext:undefined, console
 };
 global.navigator={userAgent:'headless'};
+/* fullscreen API stubs (auto-rotate: orientation.lock must be attempted) */
+global.screen={orientation:{locked:null,lock(mode){this.locked=mode;return Promise.resolve();}}};
+const __fsDoc = global.document;
+if(!__fsDoc.documentElement) __fsDoc.documentElement = mkEl('html');
+__fsDoc.fullscreenEnabled = true;
+__fsDoc.fullscreenElement = null;
+__fsDoc.documentElement.addEventListener = __fsDoc.documentElement.addEventListener || function(){};
+__fsDoc.documentElement.requestFullscreen = function(){
+  __fsDoc.fullscreenElement = this;
+  const h = (__fsDoc._h && __fsDoc._h['fullscreenchange']) || [];
+  h.forEach(f => f());
+  return Promise.resolve();
+};
+__fsDoc.exitFullscreen = function(){
+  __fsDoc.fullscreenElement = null;
+  const h = (__fsDoc._h && __fsDoc._h['fullscreenchange']) || [];
+  h.forEach(f => f());
+  return Promise.resolve();
+};
+__fsDoc.addEventListener = function(t, f){ (this._h = this._h || {}); (this._h[t] = this._h[t] || []).push(f); };
+__fsDoc.removeEventListener = function(t, f){
+  if(this._h && this._h[t]) this._h[t] = this._h[t].filter(x => x !== f);
+};
 global.window.__NO_MOUNT=1; /* React bundle must not mount in headless tests */
 global.Image=class{
   set src(v){ this._src=String(v);

@@ -1,5 +1,7 @@
 import { G, hideImg } from '../store.js';
 import { Logo } from './Logo.jsx';
+import { Icon } from './icons.jsx';
+import FullscreenBtn from './FullscreenBtn.jsx';
 
 function ResetButton({ st }){
   const g = G();
@@ -7,7 +9,9 @@ function ResetButton({ st }){
   if(st.resetArm){ label = 'CONFIRM?'; cls += ' danger'; }
   else if(st.resetMsg) label = 'PROGRESS RESET';
   return (
-    <button className={cls} id="bReset" onClick={() => g.actions.reset()}>{label}</button>
+    <button className={cls} id="bReset" onClick={() => g.actions.reset()}>
+      <Icon name="trash-2" size={13}/>{label}
+    </button>
   );
 }
 
@@ -35,20 +39,28 @@ export default function TitleScreen({ st }){
         <div className="sub2">steal back the encrypted intents · <b>don't get read</b></div>
         <div className="btnrow">
           <button className="btn primary big" id="bPlay" onClick={() => g.actions.play()}>
-            <img className="ico" src="assets/ui/play.png" alt="" onError={hideImg}/>PLAY
+            <Icon name="play" size={16} fill/> PLAY
           </button>
-          <button className="btn ghost" id="bLevels" onClick={() => g.actions.levels()}>LEVELS</button>
-          <button className="btn ghost" id="bHow" onClick={() => g.actions.how()}>HOW TO PLAY</button>
+          <button className="btn ghost" id="bLevels" onClick={() => g.actions.levels()}>
+            <Icon name="layout-grid" size={14}/> LEVELS
+          </button>
+          <button className="btn ghost" id="bHow" onClick={() => g.actions.how()}>
+            <Icon name="help-circle" size={14}/> HOW TO PLAY
+          </button>
         </div>
         <div className="settings-row">
           {st.arcade && (
             <button className="btn chipbtn" id="bBackArcade"
-              onClick={() => g.actions.arcadeExit()}>← ARCADE</button>
+              onClick={() => g.actions.arcadeExit()}>
+              <Icon name="arrow-left" size={13}/> ARCADE
+            </button>
           )}
           <button className="btn chipbtn" id="bSoundT" onClick={() => g.actions.sound()}>
-            ♪ SOUND: {st.muted ? 'OFF' : 'ON'}
+            <Icon name={st.muted ? 'volume-x' : 'volume-2'} size={13}/>
+            SOUND: {st.muted ? 'OFF' : 'ON'}
           </button>
           <ResetButton st={st}/>
+          <FullscreenBtn/>
         </div>
         <div className="tiny">
           starring Fluton's tuxedo cat ·{' '}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { G, hideImg } from '../store.js';
+import { Icon } from './icons.jsx';
 
 export default function CompleteScreen(){
   const g = G();
@@ -45,7 +46,7 @@ export default function CompleteScreen(){
         <div className="awards" id="cAwards">
           {r.awards.map((a, i) => (
             <div key={i} className={'award ' + a.cls} style={{ animationDelay: (0.55 + i * 0.15) + 's' }}>
-              <img src={a.src} alt="" onError={hideImg}/><span>{a.label}</span>
+              <Icon name={a.icon} size={13}/><span>{a.label}</span>
             </div>
           ))}
         </div>
@@ -57,9 +58,15 @@ export default function CompleteScreen(){
         </div>
         <div className="leak">VALIDATORS SAW: 0 BYTES</div>
         <div className="btnrow">
-          <button className="btn primary" id="bNext" onClick={() => g.actions.next()}>{r.nextLabel}</button>
-          <button className="btn ghost" id="bRetryC" onClick={() => g.actions.retry()}>RETRY</button>
-          <button className="btn ghost" id="bCompLevels" onClick={() => g.actions.pauseLevels()}>LEVELS</button>
+          <button className="btn primary" id="bNext" onClick={() => g.actions.next()}>
+            {r.nextLabel}<Icon name="chevron-right" size={14}/>
+          </button>
+          <button className="btn ghost" id="bRetryC" onClick={() => g.actions.retry()}>
+            <Icon name="rotate-ccw" size={14}/> RETRY
+          </button>
+          <button className="btn ghost" id="bCompLevels" onClick={() => g.actions.pauseLevels()}>
+            <Icon name="layout-grid" size={14}/> LEVELS
+          </button>
         </div>
       </div>
     </div>

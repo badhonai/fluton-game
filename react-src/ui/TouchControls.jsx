@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { G } from '../store.js';
+import { Icon } from '../ui/icons.jsx';
 
 function TouchButton({ id, act, label, cls }){
   const [held, setHeld] = useState(false);
@@ -19,8 +20,8 @@ export default function TouchControls({ st }){
   if(!(st.coarse && st.screen === 'play')) return null;
   return (
     <div id="touch">
-      <TouchButton id="tLeft"  act="left"  label="◀"       cls="tbtn"/>
-      <TouchButton id="tRight" act="right" label="▶"       cls="tbtn"/>
+      <TouchButton id="tLeft"  act="left"  label={<Icon name="chevron-left" size={22}/>}  cls="tbtn"/>
+      <TouchButton id="tRight" act="right" label={<Icon name="chevron-right" size={22}/>} cls="tbtn"/>
       <TouchButton id="tJump"  act="jump"  label="JUMP"    cls="tbtn"/>
       <TouchButton id="tEnc"   act="enc"   label="ENCRYPT" cls="tbtn small"/>
       <TouchButton id="tYarn"  act="yarn"  label="YARN"    cls="tbtn small"/>

@@ -1,17 +1,17 @@
 import { G, hideImg } from '../store.js';
+import { Icon } from './icons.jsx';
+import FullscreenBtn from './FullscreenBtn.jsx';
 
-/* HUD renders from the store (discrete values) while the energy/detection
-   bars are written imperatively through UI.refs at 60fps — no React churn. */
+/* HUD renders discrete values from the store; energy/detection bars are
+   written imperatively through UI.refs at 60fps (no React churn). */
 export default function HUD({ st }){
   const g = G();
   if(!(st.screen === 'play' || st.screen === 'pause')) return null;
   const h = st.hud || { level: '', notes: '0/0', lives: 3, score: 0, time: '0:00', yarn: 0 };
-  const hearts = g.Assets.has('ui_heart')
-    ? Array.from({ length: g.CFG.LIVES }, (_, i) => (
-        <img key={i} src="assets/ui/heart.png" alt="life"
-             className={i < h.lives ? '' : 'off'} onError={hideImg}/>
-      ))
-    : '♥'.repeat(h.lives) + '♡'.repeat(g.CFG.LIVES - h.lives);
+  const hearts = Array.from({ length: g.CFG.LIVES }, (_, i) => (
+    <Icon key={i} name="heart" size={15} fill={i < h.lives}
+          className={i < h.lives ? '' : 'off'}/>
+  ));
   return (
     <div id="hud">
       <div className="hud-tl">
@@ -31,9 +31,11 @@ export default function HUD({ st }){
         <span id="hTime">{h.time}</span>
         <span id="hLives">{hearts}</span>
         <span id="hScore">{h.score}</span>
-        <button id="btnPause" aria-label="Pause" onClick={() => g.actions.pause()}>
-          <img className="ico" src="assets/ui/pause.png" alt="pause" onError={hideImg}/>
+        <button className="hud-icon" id="btnPause" aria-label="Pause"
+          onClick={() => g.actions.pause()}>
+          <Icon name="pause" size={14}/>
         </button>
+        <FullscreenBtn label={false} className="hud-icon"/>
       </div>
       <div className="hud-bl">
         <div id="engWrap" ref={n => { g.UI.refs.engWrap = n; }}>
@@ -45,7 +47,9 @@ export default function HUD({ st }){
           <span id="hYarnN">×{h.yarn}</span>
         </div>
       </div>
-      <div id="hEnc" ref={n => { g.UI.refs.hEnc = n; }}>◆ ENCRYPTED</div>
+      <div id="hEnc" ref={n => { g.UI.refs.hEnc = n; }}>
+        <Icon name="shield" size={12}/> ENCRYPTED
+      </div>
     </div>
   );
 }

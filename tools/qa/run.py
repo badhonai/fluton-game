@@ -39,9 +39,13 @@ def run_smoke():
     bundle = open(os.path.join(QA, "_smoke.cjs")).read()
     return run_node([stubs, bundle], "_run_smoke.js")
 
+def run_audit():
+    return subprocess.run([sys.executable, os.path.join(QA, "audit.py")], cwd=ROOT).returncode
+
 def main():
     suite = sys.argv[1] if len(sys.argv) > 1 else "all"
     rc = 0
+    if suite in ("audit", "all"): rc |= run_audit()
     if suite in ("tests", "all"): rc |= run_engine("tests")
     if suite in ("extra", "all"): rc |= run_engine("extra")
     if suite in ("arcade", "all"): rc |= run_engine("arcade")
