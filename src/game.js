@@ -1288,6 +1288,15 @@ function drawCatGame(c){
   let alpha = 1;
   if(cat.invuln > 0 && cat.hurtT <= 0 && Math.floor(t*14) % 2 === 0) alpha = 0.3;
   const w = im.width * CAT_S, h = im.height * CAT_S;
+  /* A consistent contact shadow keeps the mascot grounded across every
+     sprite frame, including jump, hurt and encryption animations. */
+  c.save();
+  c.globalAlpha = cat.onGround ? 0.28 : 0.16;
+  c.fillStyle = '#000';
+  c.beginPath();
+  c.ellipse(cat.x, cat.y + 1, 15 + Math.min(8, Math.abs(cat.vy||0)*0.008), 4, 0, 0, 6.283);
+  c.fill();
+  c.restore();
   c.save();
   c.translate(cat.x, cat.y);
   c.scale(cat.dir * sqx, sqy);
@@ -1310,10 +1319,13 @@ function drawCatGame(c){
     c.setLineDash([7,6]); c.lineDashOffset = -t*40;
     c.beginPath(); c.ellipse(0, 0, 26, 32, 0, 0, 6.283); c.stroke();
     c.setLineDash([]);
-    if(Math.random() < 0.5){
-      c.globalAlpha = 0.3; c.fillStyle = '#b07cff';
-      c.fillRect(-16 + (Math.random()-.5)*8, -12 - Math.random()*24, 32, 3);
-      c.globalAlpha = 1;
+    /* Time-driven glitch bands look intentional and avoid per-frame
+       random-number churn and distracting flicker. */
+    const glitchStep=Math.floor(t*12);
+    if(glitchStep%5===0){
+      c.globalAlpha=0.3;c.fillStyle='#b07cff';
+      c.fillRect(-16+Math.sin(t*13)*4,-12-(Math.sin(t*7)+1)*12,32,3);
+      c.globalAlpha=1;
     }
     Render.glowAt(c, 0, 0, 42, '', 0.35);
     c.restore();
