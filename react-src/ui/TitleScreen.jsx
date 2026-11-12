@@ -41,6 +41,10 @@ export default function TitleScreen({ st }){
           <button className="btn ghost" id="bHow" onClick={() => g.actions.how()}>HOW TO PLAY</button>
         </div>
         <div className="settings-row">
+          {st.arcade && (
+            <button className="btn chipbtn" id="bBackArcade"
+              onClick={() => g.actions.arcadeExit()}>← ARCADE</button>
+          )}
           <button className="btn chipbtn" id="bSoundT" onClick={() => g.actions.sound()}>
             ♪ SOUND: {st.muted ? 'OFF' : 'ON'}
           </button>

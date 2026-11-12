@@ -13,6 +13,10 @@ export default function PauseOverlay({ st }){
         <button className="btn primary" id="bResume" onClick={() => g.actions.resume()}>RESUME</button>
         <button className="btn ghost" id="bRestart" onClick={() => g.actions.restart()}>RESTART LEVEL</button>
         <button className="btn ghost" id="bPauseLevels" onClick={() => g.actions.pauseLevels()}>LEVEL SELECT</button>
+        {st.arcade && (
+          <button className="btn ghost" id="bPauseArcade"
+            onClick={() => g.actions.arcadeExit()}>ARCADE HOME</button>
+        )}
         <button className="btn chipbtn" id="bSoundP" onClick={() => g.actions.sound()}>
           ♪ SOUND: {st.muted ? 'OFF' : 'ON'}
         </button>
