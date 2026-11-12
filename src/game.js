@@ -787,16 +787,18 @@ const Render={
   cv:null,c:null,dpr:1,scale:1,vw:960,vh:540,W:0,H:0,
   glow:null,vign:null,skyFar:null,skyMid:null,t:0,skySeed:7,
   init(){
-    this.cv=$('cv');
+    this.cv=$('cv');if(!this.cv)return;
     /* The canvas is fully repainted every frame; an opaque context avoids
        unnecessary alpha compositing. Keep high-quality smoothing for sprites. */
     this.c=this.cv.getContext('2d',{alpha:false});
     this.c.imageSmoothingEnabled=true;
     this.c.imageSmoothingQuality='high';
-    this.resize();window.addEventListener('resize',()=>this.resize());
+    this.resize();
+    if(!this._inited){this._inited=true;window.addEventListener('resize',()=>this.resize());}
     this.makeGlow();this.makeVignette();this.makeSky();
   },
   resize(){
+    if(!this.cv)return;
     const coarse=window.matchMedia('(pointer:coarse)').matches;
     /* A 1.5x backing store on touch devices cuts fill-rate and memory cost
        while preserving crisp rendering at typical phone viewing distances. */
@@ -1555,7 +1557,7 @@ function drawCat(c,o){
    Per-frame values (energy/det bars) bypass React via UI.refs registry. */
 const UI=(()=>{
   const subs=new Set();
-  let st={screen:'loading',loading:0,progressV:0,muted:false,
+  let st={screen:'loading',loading:0,progressV:0,muted:false,arcade:false,onExit:null,
     resetArm:false,resetMsg:false,toast:null,
     coarse:false,portrait:false,hud:null};
   function set(patch){ st={...st,...patch}; subs.forEach(f=>f()); }
@@ -1603,6 +1605,11 @@ const actions={
   retry(){SFX.click();Game.load(Game.levelIdx);},
   overLevels(){SFX.click();Game.state='select';showScreen('scr-select');buildLevelGrid();},
   overTitle(){SFX.click();Game.state='title';showScreen('scr-title');buildLevelGrid();},
+  arcadeExit(){SFX.click();
+    if(Game.state==='play')Game.pause();
+    const ex=UI.get().onExit;
+    leaveArcade();
+    if(ex)ex();},
   level(i){SFX.resume();SFX.click();Game.load(i);}
 };
 function uiInit(){
@@ -1611,10 +1618,11 @@ function uiInit(){
 }
 
 /* ================= 12 · MAIN LOOP ================= */
-let lastTs=0;
+let lastTs=0,active=false,booted=false;
 function loop(ts){
   requestAnimationFrame(loop);
   const dt=Math.min(.05,(ts-lastTs)/1000||0);lastTs=ts;
+  if(!active)return;
   if(Game.state==='play')updateGame(dt);
   else if(Game.state==='title'||Game.state==='select'||Game.state==='how')FX.update(dt);
   Input.consume();
@@ -1630,11 +1638,15 @@ function syncTouch(){
     UI.set({coarse,portrait,play});
 }
 function boot(){
-  Render.init();
+  Render.init();active=true;
+  if(booted)return;
+  booted=true;
   uiInit();
   setSoundLabels();
   requestAnimationFrame(loop);
-  Assets.loadAll((d,t)=>UI.set({loading:Math.round(d/t*100)})).then(()=>{
+  const loadP=Assets.ready?Promise.resolve():
+    Assets.loadAll((d,t)=>UI.set({loading:Math.round(d/t*100)}));
+  loadP.then(()=>{
     const elapsed=(performance&&performance.now)?performance.now():Date.now();
     setTimeout(()=>{showScreen('scr-title');buildLevelGrid();},Math.max(0,400-elapsed));
   });
@@ -1642,8 +1654,21 @@ function boot(){
   const gest=()=>{SFX.resume();window.removeEventListener('pointerdown',gest);window.removeEventListener('keydown',gest);};
   window.addEventListener('pointerdown',gest);window.addEventListener('keydown',gest);
 }
+/* arcade lifecycle — host mounts/unmounts the game module */
+function enterArcade(onExit){UI.set({arcade:true,onExit:onExit||null});boot();}
+function leaveArcade(){
+  active=false;
+  if(Game.state==='play')Game.pause();
+  UI.set({arcade:false,onExit:null});
+}
+function preloadAssets(onP){
+  if(Assets.ready){onP&&onP(Assets.total,Assets.total);return Promise.resolve();}
+  return Assets.loadAll(onP);
+}
+function isActive(){return active;}
 
 /* engine handle for the React shell (and headless QA) */
 window.__GAME={Game,Assets,Render,Input,UI,LEVELS,LEVEL_DYN,LEVEL_DECOR,store,CFG,actions,
   SFX,FX,boot,showScreen,buildLevelGrid,setSoundLabels,toggleSound,isCoarsePortrait,
-  catFrameKey,fmtTime,solidAt,losClear,inCone,dist2,drawAsset};
+  catFrameKey,fmtTime,solidAt,losClear,inCone,dist2,drawAsset,
+  enterArcade,leaveArcade,preloadAssets,isActive};
