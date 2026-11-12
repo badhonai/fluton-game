@@ -276,3 +276,52 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
   .logo .sub{letter-spacing:.3em}
   .btnrow{margin-top:16px}.tiny{margin-top:12px}
 }
+
+
+/* ---------- quality, accessibility and mobile polish ---------- */
+:focus-visible{
+  outline:2px solid var(--cy);
+  outline-offset:4px;
+}
+button:focus:not(:focus-visible){outline:none}
+#stage{
+  padding-top:env(safe-area-inset-top,0px);
+}
+.hud-tl{top:max(12px,env(safe-area-inset-top,0px));left:max(16px,env(safe-area-inset-left,0px))}
+.hud-tr{top:max(12px,env(safe-area-inset-top,0px));right:max(14px,env(safe-area-inset-right,0px))}
+.hud-bl{left:max(16px,env(safe-area-inset-left,0px));bottom:max(14px,env(safe-area-inset-bottom,0px))}
+#hEnc{bottom:max(16px,env(safe-area-inset-bottom,0px));right:max(16px,env(safe-area-inset-right,0px))}
+#toast{bottom:max(88px,calc(env(safe-area-inset-bottom,0px) + 72px))}
+.tbtn{
+  touch-action:none;
+  -webkit-user-select:none;
+  user-select:none;
+}
+.tbtn:focus-visible{outline:2px solid #fff;outline-offset:4px}
+
+@media (pointer:coarse){
+  .screen{backdrop-filter:none;-webkit-backdrop-filter:none}
+  .hud-tl{gap:6px}
+  .chip{padding:6px 9px;font-size:10px}
+}
+@media (max-width:760px) and (orientation:landscape){
+  .hud-tl{top:8px;left:8px}
+  .hud-tr{top:8px;right:8px;gap:7px;padding:4px 7px}
+  .hud-bl{left:8px;bottom:8px;gap:5px}
+  #engWrap{padding:5px 8px;gap:6px}
+  #engBarBox{width:clamp(72px,15vw,130px)}
+  #hEnc{right:8px;bottom:8px;padding:6px 9px}
+  #tLeft{left:max(12px,env(safe-area-inset-left,0px));bottom:max(12px,env(safe-area-inset-bottom,0px));width:64px;height:64px}
+  #tRight{left:88px;bottom:max(12px,env(safe-area-inset-bottom,0px));width:64px;height:64px}
+  #tJump{right:max(12px,env(safe-area-inset-right,0px));bottom:max(12px,env(safe-area-inset-bottom,0px));width:74px;height:74px}
+  #tEnc{right:98px;bottom:max(16px,env(safe-area-inset-bottom,0px));width:62px;height:62px}
+  #tYarn{right:18px;bottom:100px;width:48px;height:48px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    scroll-behavior:auto!important;
+    animation-duration:.01ms!important;
+    animation-iteration-count:1!important;
+    transition-duration:.01ms!important;
+  }
+}

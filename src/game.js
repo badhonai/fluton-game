@@ -70,20 +70,28 @@ function drawAsset(c,k,x,y,opt){
   c.restore();
   return true;
 }
-const _tint = {cv:null, cx:null};
+/* Cache pre-tinted sprites by source image, size and tint. Encryption can
+   stay active for minutes, so rebuilding this offscreen image every frame
+   needlessly burns CPU and allocates canvas work on mobile GPUs. */
+const _tintCache = new WeakMap();
 function drawTinted(c, im, x, y, w, h, color, alpha){
-  if(!_tint.cv){ _tint.cv = document.createElement('canvas'); _tint.cx = _tint.cv.getContext('2d'); }
   const tw = Math.max(1, Math.ceil(w)), th = Math.max(1, Math.ceil(h));
-  if(_tint.cv.width < tw) _tint.cv.width = tw;
-  if(_tint.cv.height < th) _tint.cv.height = th;
-  const t = _tint.cx;
-  t.clearRect(0,0,tw,th);
-  t.drawImage(im, 0, 0, tw, th);
-  t.globalCompositeOperation = 'source-atop';
-  t.globalAlpha = alpha; t.fillStyle = color;
-  t.fillRect(0,0,tw,th);
-  t.globalAlpha = 1; t.globalCompositeOperation = 'source-over';
-  c.drawImage(_tint.cv, 0, 0, tw, th, x, y, w, h);
+  let variants = _tintCache.get(im);
+  if(!variants){ variants = new Map(); _tintCache.set(im, variants); }
+  const key = tw+'x'+th+'|'+color+'|'+alpha;
+  let tinted = variants.get(key);
+  if(!tinted){
+    tinted = document.createElement('canvas');
+    tinted.width = tw; tinted.height = th;
+    const t = tinted.getContext('2d');
+    t.drawImage(im, 0, 0, tw, th);
+    t.globalCompositeOperation = 'source-atop';
+    t.globalAlpha = alpha; t.fillStyle = color;
+    t.fillRect(0,0,tw,th);
+    t.globalAlpha = 1; t.globalCompositeOperation = 'source-over';
+    variants.set(key, tinted);
+  }
+  c.drawImage(tinted, 0, 0, tw, th, x, y, w, h);
 }
 
 /* ================= 2 · AUDIO ================= */
@@ -476,11 +484,16 @@ const Game={
       UI.set({hud:d});
     /* per-frame bars/badges -> direct DOM refs (no React churn at 60fps) */
     const r=UI.refs,e=this.cat?this.cat.energy:100;
-    if(r.engBar)r.engBar.style.width=e+'%';
-    if(r.engWrap)r.engWrap.classList.toggle('low',e<25);
-    if(r.detBar)r.detBar.style.width=(this.det*100)+'%';
-    if(r.detBox)r.detBox.classList.toggle('on',this.det>0.01);
-    if(r.hEnc)r.hEnc.classList.toggle('on',!!(this.cat&&this.cat.enc));
+    /* Skip unchanged DOM writes: this method runs on every simulation frame. */
+    if(r.engBar&&r._engValue!==e){r.engBar.style.width=e+'%';r._engValue=e;}
+    const low=e<25;
+    if(r.engWrap&&r._engLow!==low){r.engWrap.classList.toggle('low',low);r._engLow=low;}
+    const det=this.det*100;
+    if(r.detBar&&r._detValue!==det){r.detBar.style.width=det+'%';r._detValue=det;}
+    const detOn=this.det>0.01;
+    if(r.detBox&&r._detOn!==detOn){r.detBox.classList.toggle('on',detOn);r._detOn=detOn;}
+    const enc=!!(this.cat&&this.cat.enc);
+    if(r.hEnc&&r._encOn!==enc){r.hEnc.classList.toggle('on',enc);r._encOn=enc;}
   }
 };
 
@@ -774,12 +787,20 @@ const Render={
   cv:null,c:null,dpr:1,scale:1,vw:960,vh:540,W:0,H:0,
   glow:null,vign:null,skyFar:null,skyMid:null,t:0,skySeed:7,
   init(){
-    this.cv=$('cv');this.c=this.cv.getContext('2d');
+    this.cv=$('cv');
+    /* The canvas is fully repainted every frame; an opaque context avoids
+       unnecessary alpha compositing. Keep high-quality smoothing for sprites. */
+    this.c=this.cv.getContext('2d',{alpha:false});
+    this.c.imageSmoothingEnabled=true;
+    this.c.imageSmoothingQuality='high';
     this.resize();window.addEventListener('resize',()=>this.resize());
     this.makeGlow();this.makeVignette();this.makeSky();
   },
   resize(){
-    this.dpr=Math.min(2,window.devicePixelRatio||1);
+    const coarse=window.matchMedia('(pointer:coarse)').matches;
+    /* A 1.5x backing store on touch devices cuts fill-rate and memory cost
+       while preserving crisp rendering at typical phone viewing distances. */
+    this.dpr=Math.min(coarse?1.5:2,window.devicePixelRatio||1);
     this.W=window.innerWidth;this.H=window.innerHeight;
     this.cv.width=Math.floor(this.W*this.dpr);this.cv.height=Math.floor(this.H*this.dpr);
     this.scale=Math.min(this.W/CFG.VIEW_W,this.H/CFG.VIEW_H);
@@ -832,6 +853,17 @@ const Render={
     const grd=c.createLinearGradient(0,0,0,H);
     grd.addColorStop(0,'#0a1024'); grd.addColorStop(.72,'#070b18'); grd.addColorStop(1,'#06080f');
     c.fillStyle=grd; c.fillRect(0,0,W,H);
+    /* Deterministic, low-cost star field adds depth without per-frame random
+       allocations or image assets. Slow parallax keeps it behind the action. */
+    for(let i=0;i<72;i++){
+      const x=((i*97.31-camX*.035)%W+W)%W;
+      const y=(i*53.17)%(H*.68);
+      const twinkle=.35+.35*(.5+.5*Math.sin(this.t*1.4+i*2.17));
+      c.globalAlpha=twinkle;
+      c.fillStyle=i%7===0?'#9deee8':'#9aa9d2';
+      c.fillRect(x,y,i%9===0?2:1,i%9===0?2:1);
+    }
+    c.globalAlpha=1;
     const far=Assets.get('bg_far'), mid=Assets.get('bg_mid');
     if(far){
       const dh=Math.max(220,H*0.50), dw=dh*(far.width/far.height);
@@ -949,9 +981,10 @@ const Render={
       if(this._facePat)c.fillStyle=this._facePat;else c.fillStyle='#0d1526';
       c.fillRect(x,y,36,36);
       const above=!solidAt(tx,ty-1);
-      const g=c.createLinearGradient(x,y,x,y+36);
-      g.addColorStop(0,'rgba(61,245,224,.10)');g.addColorStop(1,'rgba(61,245,224,0)');
-      c.fillStyle=g;c.fillRect(x,y,36,36);
+      /* A compact top-light pass replaces one gradient allocation per
+         visible tile per frame. The platform sprite supplies the detailed edge. */
+      c.fillStyle='rgba(61,245,224,.055)';
+      c.fillRect(x,y,36,12);
       if(above){
         const strip=Assets.get('plat_top');
         if(strip){c.globalAlpha=.95;c.drawImage(strip,x,y-1,36,16);c.globalAlpha=1;}
@@ -1016,7 +1049,11 @@ const Render={
     /* --- bots --- */
     for(const b of Game.bots)this.drawBot(c,b);
 
-    /* --- cat --- */
+    /* --- player light and cat --- */
+    if(Game.cat){
+      const p=Game.cat;
+      this.glowAt(c,p.x,p.y-24,68,'',p.enc?.24:.12);
+    }
     drawCatGame(c);
 
     /* --- particles & floats --- */
@@ -1267,6 +1304,15 @@ function drawCatGame(c){
   let alpha = 1;
   if(cat.invuln > 0 && cat.hurtT <= 0 && Math.floor(t*14) % 2 === 0) alpha = 0.3;
   const w = im.width * CAT_S, h = im.height * CAT_S;
+  /* A consistent contact shadow keeps the mascot grounded across every
+     sprite frame, including jump, hurt and encryption animations. */
+  c.save();
+  c.globalAlpha = cat.onGround ? 0.28 : 0.16;
+  c.fillStyle = '#000';
+  c.beginPath();
+  c.ellipse(cat.x, cat.y + 1, 15 + Math.min(8, Math.abs(cat.vy||0)*0.008), 4, 0, 0, 6.283);
+  c.fill();
+  c.restore();
   c.save();
   c.translate(cat.x, cat.y);
   c.scale(cat.dir * sqx, sqy);
@@ -1289,10 +1335,13 @@ function drawCatGame(c){
     c.setLineDash([7,6]); c.lineDashOffset = -t*40;
     c.beginPath(); c.ellipse(0, 0, 26, 32, 0, 0, 6.283); c.stroke();
     c.setLineDash([]);
-    if(Math.random() < 0.5){
-      c.globalAlpha = 0.3; c.fillStyle = '#b07cff';
-      c.fillRect(-16 + (Math.random()-.5)*8, -12 - Math.random()*24, 32, 3);
-      c.globalAlpha = 1;
+    /* Time-driven glitch bands look intentional and avoid per-frame
+       random-number churn and distracting flicker. */
+    const glitchStep=Math.floor(t*12);
+    if(glitchStep%5===0){
+      c.globalAlpha=0.3;c.fillStyle='#b07cff';
+      c.fillRect(-16+Math.sin(t*13)*4,-12-(Math.sin(t*7)+1)*12,32,3);
+      c.globalAlpha=1;
     }
     Render.glowAt(c, 0, 0, 42, '', 0.35);
     c.restore();
