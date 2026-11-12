@@ -2,7 +2,7 @@
 """Build dist/standalone.html — fully self-contained (inlined CSS/JS + data-URI PNGs).
 Source of truth: index.html + src/style.css + src/manifest.js + src/app.js (React bundle).
 """
-import base64, os, re, sys
+import base64, os, re, shutil, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -26,7 +26,7 @@ def main():
     html = inline_js(html, '<script src="src/app.js"></script>', "src/app.js")
 
     # inline images as data URIs (paths appear in manifest + component strings)
-    paths = set(re.findall(r'assets/[A-Za-z0-9_\-./]+\.png', html))
+    paths = set(re.findall(r'assets/[A-Za-z0-9_\\-./]+\\.png', html))
     missing = []
     for p in sorted(paths):
         full = os.path.join(ROOT, p)
@@ -40,6 +40,8 @@ def main():
     os.makedirs(out, exist_ok=True)
     dst = os.path.join(out, "standalone.html")
     open(dst, "w").write(html)
+    # Vercel's static output directory expects an index.html entry point.
+    shutil.copyfile(dst, os.path.join(out, "index.html"))
     print(f"built dist/standalone.html  {os.path.getsize(dst)//1024} KB  "
           f"({len(paths)} asset refs, {len(missing)} missing)")
     if missing:
