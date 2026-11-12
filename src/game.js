@@ -853,6 +853,17 @@ const Render={
     const grd=c.createLinearGradient(0,0,0,H);
     grd.addColorStop(0,'#0a1024'); grd.addColorStop(.72,'#070b18'); grd.addColorStop(1,'#06080f');
     c.fillStyle=grd; c.fillRect(0,0,W,H);
+    /* Deterministic, low-cost star field adds depth without per-frame random
+       allocations or image assets. Slow parallax keeps it behind the action. */
+    for(let i=0;i<72;i++){
+      const x=((i*97.31-camX*.035)%W+W)%W;
+      const y=(i*53.17)%(H*.68);
+      const twinkle=.35+.35*(.5+.5*Math.sin(this.t*1.4+i*2.17));
+      c.globalAlpha=twinkle;
+      c.fillStyle=i%7===0?'#9deee8':'#9aa9d2';
+      c.fillRect(x,y,i%9===0?2:1,i%9===0?2:1);
+    }
+    c.globalAlpha=1;
     const far=Assets.get('bg_far'), mid=Assets.get('bg_mid');
     if(far){
       const dh=Math.max(220,H*0.50), dw=dh*(far.width/far.height);
@@ -970,9 +981,10 @@ const Render={
       if(this._facePat)c.fillStyle=this._facePat;else c.fillStyle='#0d1526';
       c.fillRect(x,y,36,36);
       const above=!solidAt(tx,ty-1);
-      const g=c.createLinearGradient(x,y,x,y+36);
-      g.addColorStop(0,'rgba(61,245,224,.10)');g.addColorStop(1,'rgba(61,245,224,0)');
-      c.fillStyle=g;c.fillRect(x,y,36,36);
+      /* A compact top-light pass replaces one gradient allocation per
+         visible tile per frame. The platform sprite supplies the detailed edge. */
+      c.fillStyle='rgba(61,245,224,.055)';
+      c.fillRect(x,y,36,12);
       if(above){
         const strip=Assets.get('plat_top');
         if(strip){c.globalAlpha=.95;c.drawImage(strip,x,y-1,36,16);c.globalAlpha=1;}
@@ -1037,7 +1049,11 @@ const Render={
     /* --- bots --- */
     for(const b of Game.bots)this.drawBot(c,b);
 
-    /* --- cat --- */
+    /* --- player light and cat --- */
+    if(Game.cat){
+      const p=Game.cat;
+      this.glowAt(c,p.x,p.y-24,68,'',p.enc?.24:.12);
+    }
     drawCatGame(c);
 
     /* --- particles & floats --- */
