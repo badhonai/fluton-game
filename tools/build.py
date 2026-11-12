@@ -26,7 +26,7 @@ def main():
     html = inline_js(html, '<script src="src/app.js"></script>', "src/app.js")
 
     # inline images as data URIs (paths appear in manifest + component strings)
-    paths = set(re.findall(r'assets/[A-Za-z0-9_\\-./]+\\.png', html))
+    paths = set(re.findall(r'assets/[A-Za-z0-9_\-./]+\.png', html))
     missing = []
     for p in sorted(paths):
         full = os.path.join(ROOT, p)
