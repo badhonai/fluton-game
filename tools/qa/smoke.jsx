@@ -2,6 +2,8 @@
    Bundle with esbuild (platform=node), prepend stubs, run under Node. */
 import { renderToString } from 'react-dom/server';
 import App from '../../react-src/App.jsx';
+import ArcadeApp from '../../react-src/arcade/ArcadeApp.jsx';
+import { UIA } from '../../react-src/arcade/store.js';
 
 const g = window.__GAME;
 let fails = 0;
@@ -77,6 +79,33 @@ g.Assets.imgs.ui_heart = { width: 16, height: 16 };
 html = renderAt('play', { coarse: false });
 ok(html.includes('assets/ui/heart.png'), 'heart icons render when asset present');
 delete g.Assets.imgs.ui_heart;
+
+/* ---------- arcade render states ---------- */
+UIA.set({ ready: false, loading: 42 });
+html = renderToString(<ArcadeApp/>);
+ok(html.includes('loading the arcade') && html.includes('42%'), 'arcade loading screen renders progress');
+
+UIA.set({ ready: true, screen: 'home', gameId: null });
+html = renderToString(<ArcadeApp/>);
+ok(html.includes('FLUTON ARCADE'), 'home renders arcade brand');
+ok(html.includes('GLASS HOUSE HEIST') && html.includes('GLASS DASH'), 'home lists both playable games');
+ok(html.includes('PRISM CUBES') && html.includes('SOON'), 'locked cards render with SOON state');
+ok(html.includes('id="bFeaturedPlay"'), 'featured hero has play CTA');
+ok(html.includes('assets/arcade/ghh-icon.png'), 'game icons referenced');
+ok(html.includes('bSoundA'), 'home sound toggle present');
+
+g.UI.set({ arcade: true, screen: 'title' });
+UIA.set({ screen: 'game', gameId: 'ghh' });
+html = renderToString(<ArcadeApp/>);
+ok(html.includes('arcade-host') && html.includes('id="cv"'), 'GHH hosts canvas inside arcade');
+ok(html.includes('bBackArcade'), 'GHH title offers ARCADE back button');
+
+UIA.set({ screen: 'game', gameId: 'dash' });
+html = renderToString(<ArcadeApp/>);
+ok(html.includes('dash-cv') && html.includes('SCORE') && html.includes('bDashPause'), 'Glass Dash renders canvas + HUD');
+
+UIA.set({ screen: 'home', gameId: null });
+g.UI.set({ arcade: false, screen: 'loading' });
 
 console.log(fails ? '\nSMOKE FAILED (' + fails + ')' : '\nRENDER SMOKE PASSED');
 if(fails) process.exitCode = 1;

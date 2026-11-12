@@ -71,6 +71,7 @@ try{
   /* ---------- detection -> alarm ---------- */
   Game.load(0);
   const cam=Game.cams[0];
+  cam.spd=0; cam.ph=0; /* lock the sweep — deterministic detection test */
   Game.cat.x=cam.x+90; Game.cat.y=504; Game.cat.vx=0;
   __tick(150);
   assert(Game.alarms>=1 || Game.lives<3,'detection triggers alarm (alarms='+Game.alarms+' lives='+Game.lives+')');
