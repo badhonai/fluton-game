@@ -53,7 +53,10 @@ export default function HomeScreen({ st }){
       <header className="arcade-bar">
         <div className="arcade-brand"><Logo className="fmark"/><span>FLUTON ARCADE</span></div>
         <div className="arcade-bar-right">
-          <span className="arcade-chip"><Icon name="star" size={13} fill/> {totalStars()} / 15</span>
+          <span className="arcade-chip">
+            <img src="assets/pickups/star.png" alt="" onError={hideImg}/>
+            {totalStars()} / 15
+          </span>
           <button className="btn chipbtn" id="bSoundA" onClick={toggleMute}>
             <Icon name={muted ? 'volume-x' : 'volume-2'} size={13}/>
             SOUND: {muted ? 'OFF' : 'ON'}

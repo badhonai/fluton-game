@@ -8,10 +8,15 @@ export default function HUD({ st }){
   const g = G();
   if(!(st.screen === 'play' || st.screen === 'pause')) return null;
   const h = st.hud || { level: '', notes: '0/0', lives: 3, score: 0, time: '0:00', yarn: 0 };
-  const hearts = Array.from({ length: g.CFG.LIVES }, (_, i) => (
-    <Icon key={i} name="heart" size={15} fill={i < h.lives}
-          className={i < h.lives ? '' : 'off'}/>
-  ));
+  const hearts = g.Assets.has('ui_heart')
+    ? Array.from({ length: g.CFG.LIVES }, (_, i) => (
+        <img key={i} src="assets/ui/heart.png" alt="life"
+             className={i < h.lives ? '' : 'off'} onError={hideImg}/>
+      ))
+    : Array.from({ length: g.CFG.LIVES }, (_, i) => (
+        <Icon key={i} name="heart" size={15} fill={i < h.lives}
+              className={i < h.lives ? '' : 'off'}/>
+      ));
   return (
     <div id="hud">
       <div className="hud-tl">

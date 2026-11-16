@@ -34,6 +34,7 @@ export default function GlassDash({ onExit }){
       cv.width = Math.max(1, Math.floor(w * dpr));
       cv.height = Math.max(1, Math.floor(h * dpr));
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.imageSmoothingEnabled = false; /* pixel-arcade */
       eng.layout(w, h);
     };
     resize();

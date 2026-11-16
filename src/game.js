@@ -84,6 +84,7 @@ function drawTinted(c, im, x, y, w, h, color, alpha){
     tinted = document.createElement('canvas');
     tinted.width = tw; tinted.height = th;
     const t = tinted.getContext('2d');
+    t.imageSmoothingEnabled = false;
     t.drawImage(im, 0, 0, tw, th);
     t.globalCompositeOperation = 'source-atop';
     t.globalAlpha = alpha; t.fillStyle = color;
@@ -791,8 +792,8 @@ const Render={
     /* The canvas is fully repainted every frame; an opaque context avoids
        unnecessary alpha compositing. Keep high-quality smoothing for sprites. */
     this.c=this.cv.getContext('2d',{alpha:false});
-    this.c.imageSmoothingEnabled=true;
-    this.c.imageSmoothingQuality='high';
+    /* pixel-arcade: nearest-neighbour sprite scaling — chunky, shimmer-free */
+    this.c.imageSmoothingEnabled=false;
     this.resize();
     if(!this._inited){this._inited=true;window.addEventListener('resize',()=>this.resize());}
     this.makeGlow();this.makeVignette();this.makeSky();
