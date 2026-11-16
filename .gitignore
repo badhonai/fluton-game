@@ -1,3 +1,5 @@
 image-search/
 node_modules/
 __pycache__/
+dist/index.html
+assets/source/
