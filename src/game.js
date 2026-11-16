@@ -1630,7 +1630,8 @@ function showScreen(id){
   const map={'scr-title':'title','scr-select':'select','scr-how':'how',
     'scr-settings':'settings','scr-pause':'pause',
     'scr-complete':'complete','scr-over':'over'};
-  UI.set({screen:id?(map[id]||'play'):'play'});
+  if(id)UI.set({screen:map[id]||'play',toast:null});   /* stale lessons must not bleed into menus/results */
+  else UI.set({screen:'play'});
 }
 function setSoundLabels(){ UI.set({muted:SFX.isMuted()}); }
 function buildLevelGrid(){ UI.set({progressV:UI.get().progressV+1}); }

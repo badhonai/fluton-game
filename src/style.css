@@ -124,13 +124,31 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
   animation:catbob 3.2s ease-in-out infinite;
   filter:drop-shadow(0 16px 20px rgba(10,16,40,.55))}
 @keyframes catbob{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
-.title-floor{position:absolute;bottom:-2px;left:8%;right:8%;height:10px;border-radius:999px;
-  background:linear-gradient(90deg,transparent,rgba(125,233,255,.75),transparent);
-  filter:blur(1px)}
+.title-floor{position:absolute;bottom:-2px;left:10%;right:10%;height:5px;border-radius:999px;
+  background:linear-gradient(90deg,transparent,rgba(125,233,255,.8),transparent);
+  filter:blur(2px)}
 @media (max-height:600px){
-  .title-stage{height:84px}.title-cat{height:92px}
+  .title-stage{height:80px}.title-cat{height:88px}
   .logo .fmark.big{width:40px;height:40px}
+  .logo h1{font-size:clamp(24px,5vw,40px)}
+  .btnrow{margin-top:14px}
   .tiny{display:none}          /* progress lives on the arcade home footer */
+}
+/* landscape phones (short height): compress the whole title to fit — no clip */
+@media (max-height:430px){
+  .kicker{font-size:10px;letter-spacing:.24em}
+  .logo{gap:9px}
+  .logo .fmark.big{width:30px;height:30px}
+  .logo h1{font-size:clamp(19px,4.4vw,30px);line-height:1.06}
+  .logo .sub{font-size:8px;letter-spacing:.2em;margin-top:5px}
+  .title-stage{height:52px}
+  .title-cat{height:58px}
+  .sub2{display:none}
+  .btnrow{margin-top:10px;gap:9px}
+  .btnrow .btn{min-height:42px;padding:9px 16px;font-size:13.5px}
+  .btn.big{min-height:44px;padding:9px 20px;font-size:14.5px}
+  .settings-row{margin-top:7px;gap:7px}
+  .settings-row .btn.chipbtn{min-height:34px;padding:6px 12px;font-size:12px}
 }
 
 /* ---------- level select ---------- */
@@ -359,7 +377,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 #touch{position:absolute;inset:0;z-index:12;pointer-events:none}
 .tbtn{position:absolute;pointer-events:auto;border-radius:50%;display:flex;
   align-items:center;justify-content:center;font-weight:800;line-height:1.15;
-  text-align:center;background:rgba(125,233,255,.22);
+  text-align:center;background:rgba(30,42,84,.78);
   border:3px solid rgba(255,255,255,.5);color:#eafaff;font-size:22px;
   box-shadow:0 6px 0 rgba(10,16,40,.45),inset 0 4px 0 rgba(255,255,255,.3);
   touch-action:none;user-select:none;-webkit-user-select:none;
@@ -419,7 +437,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
   padding-left:calc(16px + var(--safe-l));padding-right:calc(16px + var(--safe-r));
   display:flex;flex-direction:column;gap:12px;overflow:hidden}
 .featured{position:relative;border-radius:22px;overflow:hidden;cursor:pointer;
-  min-height:170px;display:flex;align-items:flex-end;
+  min-height:170px;flex:none;display:flex;align-items:flex-end;
   box-shadow:0 10px 0 var(--soft),0 24px 50px rgba(0,0,0,.3);
   background:var(--surface);transition:transform .12s cubic-bezier(.3,1.4,.5,1)}
 .featured:active{transform:translateY(4px)}
@@ -439,7 +457,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
   filter:drop-shadow(0 12px 18px rgba(10,16,40,.55))}
 @media (min-width:560px){.featured-icon{display:block}}
 .shelf-label{font-size:12px;letter-spacing:.3em;color:var(--faint);font-weight:800;
-  text-align:left}
+  text-align:left;flex:none}
 .game-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
 @media (min-width:640px){.game-grid{grid-template-columns:repeat(auto-fill,minmax(184px,1fr))}}
 .game-card{position:relative;display:flex;flex-direction:column;gap:4px;text-align:left;
@@ -466,14 +484,17 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .card-score{font-size:13.5px;color:var(--faint);font-weight:700;margin-top:1px}
 .game-card.soon{opacity:.6;cursor:default}
 .arcade-foot{font-size:12.5px;color:var(--faint);letter-spacing:.03em;
-  text-align:center;line-height:1.7;font-weight:600}
+  text-align:center;line-height:1.7;font-weight:600;flex:none}
 .arcade-foot a{color:rgba(125,233,255,.9);text-decoration:none}
 .fs-label{display:none}
 @media (min-width:640px){.fs-label{display:inline}}
-/* short landscape (phones): compress home to fit —4-col card row, no scroll */
+/* short landscape (phones): compress home to fit — no scroll, nothing clipped */
 @media (max-height:560px){
-  .featured{min-height:118px}
-  .featured-body h2{font-size:17px;margin:4px 0 6px}
+  .featured{min-height:116px}
+  .featured-body{padding:14px 16px}
+  .featured-body .kicker{display:none}     /* title matters more than the label */
+  .featured-body h2{font-size:17px;margin:2px 0 6px}
+  .featured-body p{display:none}            /* blurb needs tall screens */
   .featured-body .btn{min-height:40px;padding:9px 20px;font-size:14px}
   .featured-icon{width:84px}
   .shelf-label{display:none}
@@ -482,6 +503,24 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
   .card-title{font-size:11px}
   .card-tag,.card-score{display:none}
   .arcade-foot{font-size:11px}
+}
+@media (max-height:430px){
+  .arcade-bar{padding-top:calc(7px + var(--safe-t));padding-bottom:3px}
+  .arcade-brand{font-size:11.5px;letter-spacing:.1em}
+  .arcade-brand .fmark{width:20px;height:20px}
+  .arcade-bar-right{gap:7px}
+  .arcade-chip{padding:6px 10px;font-size:13px}
+  .arcade-bar .btn.chipbtn{min-height:34px;padding:6px 12px;font-size:12px}
+  .arcade-scroll{gap:7px;padding-top:3px;padding-bottom:calc(8px + var(--safe-b))}
+  .featured{min-height:94px}
+  .featured-body{padding:10px 13px}
+  .featured-body h2{font-size:14.5px;margin:0 0 5px}
+  .featured-body .btn{min-height:34px;padding:7px 17px;font-size:12.5px}
+  .featured-icon{width:66px;right:9px;bottom:9px}
+  .game-card{padding:6px}
+  .card-art{aspect-ratio:1/.48}
+  .card-title{font-size:10px}
+  .arcade-foot{font-size:10px;line-height:1.5}
 }
 
 /* ============================================================
@@ -528,4 +567,99 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 @media (max-width:400px){
   .dash-score b{font-size:22px}
   .dash-best{display:none}
+}
+
+/* ===== compact tiers LAST so they win the cascade over base rules ===== */
+/* short landscape: dialogs + results must fit the viewport entirely */
+@media (max-height:520px){
+  .pausecard{gap:8px;padding:14px 18px;min-width:min(300px,86vw)}
+  .pause-title,.pausecard h2{font-size:15px;letter-spacing:.12em}
+  .pausecard .ctrl-line{display:none}   /* keyboard hints are desktop-only */
+  .pausecard .btn{min-height:40px;padding:8px 15px;font-size:13.5px}
+  .pausecard .settings-row{margin-top:2px;gap:7px}
+  .pausecard .btn.chipbtn{min-height:32px;padding:5px 11px;font-size:11.5px}
+  .ov-title{font-size:clamp(18px,5vw,30px);margin-top:0}
+  .stars{margin-top:6px;gap:14px}
+  .star img{width:30px}
+  .awards{margin-top:7px;gap:7px}
+  .award{padding:5px 10px;font-size:11px}
+  .breakdown{margin-top:8px;padding:8px 13px;gap:2px;min-width:min(280px,84vw)}
+  .brow{font-size:14px}
+  .brow.total{font-size:15px;padding-top:5px}
+  .brow.total b{font-size:22px}
+  .leak{display:none}
+  .ov-inner .btnrow{margin-top:10px;gap:9px}
+  .ov-inner .btn{min-height:40px;padding:8px 16px;font-size:13.5px}
+}
+/* very short landscape (360px): dialogs + results fit to the pixel */
+@media (max-height:430px){
+  .pausecard{gap:6px;padding:12px 16px}
+  .pause-title,.pausecard h2{font-size:14px;letter-spacing:.1em}
+  .pausecard .btn{min-height:36px;padding:7px 14px;font-size:12.5px}
+  .pausecard .btn.chipbtn{min-height:28px;padding:4px 10px;font-size:10.5px}
+  .ov-inner .kicker{display:none}          /* CLEAN GETAWAY carries the moment */
+  .ov-title{font-size:clamp(15px,4vw,20px);text-shadow:none;margin-top:0}
+  .stars{margin-top:2px;gap:10px}
+  .star img{width:22px}
+  .awards{margin-top:5px;gap:5px}
+  .award{padding:3px 8px;font-size:10px}
+  .breakdown{margin-top:4px;padding:6px 11px;row-gap:0;column-gap:14px;
+    display:grid;grid-template-columns:1fr 1fr}
+  .brow{font-size:12.5px;line-height:1.55}
+  .brow.total{grid-column:1/-1;font-size:13.5px;padding-top:3px}
+  .brow.total b{font-size:18px}
+  .ov-inner .btnrow{margin-top:6px;gap:8px}
+  .ov-inner .btn{min-height:34px;padding:6px 13px;font-size:12px}
+}
+
+/* narrow phones (portrait width): keep the home shell inside the viewport */
+@media (max-width:430px){
+  .arcade-bar{gap:8px}
+  .arcade-brand{font-size:11.5px;letter-spacing:.1em}
+  .arcade-brand .fmark{width:20px;height:20px}
+  .arcade-chip{padding:6px 10px;font-size:12.5px}
+  .arcade-bar .btn.chipbtn{min-height:32px;padding:6px 11px;font-size:11.5px}
+  .arcade-scroll{gap:10px}
+  .featured{min-height:150px}
+  .featured-body{padding:14px 15px}
+  .featured-body h2{font-size:19px}
+  .featured-body .btn{min-height:42px}
+  .game-grid{gap:10px}
+  .card-art{aspect-ratio:1/.52}
+  .arcade-foot{font-size:11px}
+}
+
+/* ===== menu screens at <=430px height: headers shrink, everything fits ===== */
+@media (max-height:430px){
+  #scr-how .kicker,#scr-how .h1s,#scr-select .kicker,
+  #scr-settings .kicker{display:none}
+  #scr-select .h1s,#scr-settings .h1s{font-size:18px;margin-top:0}
+  #scr-how .btnrow,#scr-select .btnrow,#scr-settings .btnrow{margin-top:8px}
+  #scr-how .btnrow .btn,#scr-select .btnrow .btn,#scr-settings .btnrow .btn{
+    min-height:36px;padding:6px 15px;font-size:12.5px;flex:0 1 auto}
+  /* how-to accordion */
+  #scr-how .acc-wrap{margin-top:0;width:min(600px,94vw)}
+  #scr-how .acc{gap:7px}
+  #scr-how .acc-trigger{padding:10px 14px;font-size:14px;gap:9px}
+  #scr-how .acc-content{padding:0 14px 11px}
+  #scr-how .acc-content p{font-size:13.5px;line-height:1.6}
+  #scr-how .kbd{padding:4px 9px;font-size:12.5px}
+  #scr-how .keys{margin-top:7px}
+  /* level select */
+  #scr-select .lvgrid{margin-top:8px;gap:9px}
+  #scr-select .lvcard{min-height:96px;padding:10px 8px 8px;border-radius:14px}
+  #scr-select .lvcard .t{font-size:12px}
+  #scr-select .lvcard .st img{width:16px;height:16px}
+  #scr-select .lvcard .n{font-size:10.5px}
+  #scr-select .lvcard .best{font-size:12.5px}
+  /* settings */
+  #scr-settings .settings-panel{gap:6px;padding:9px 12px;margin-top:4px;
+    border-radius:16px}
+  #scr-settings .set-row{padding:6px 10px;gap:10px;border-radius:12px}
+  #scr-settings .set-label{font-size:14px;gap:7px}
+  #scr-settings .set-hint{font-size:11px}
+  #scr-settings .rad-slider{width:min(170px,34vw)}
+  #scr-settings .sw{width:48px;height:28px}
+  #scr-settings .sw-thumb{width:22px;height:22px}
+  #scr-settings .sw[data-state="checked"] .sw-thumb{transform:translateX(23px)}
 }
