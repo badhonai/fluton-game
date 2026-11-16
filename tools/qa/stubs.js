@@ -5,12 +5,19 @@ function mkClassList(){ const set=new Set(); return {
   remove:(...c)=>c.forEach(x=>set.delete(x)),
   toggle:(c,f)=>{ if(f===undefined){ set.has(c)?set.delete(c):set.add(c);} else { f?set.add(c):set.delete(c);} },
   contains:c=>set.has(c) }; }
+global.__ops = {};   /* per-frame canvas op counters (perf budgets) */
+function mkCount(name){
+  return (...a)=>{ __ops[name] = (__ops[name]||0) + 1; };
+}
 function mkCtx(){
   const grad={addColorStop(){}};
-  const special={createRadialGradient:()=>grad,createLinearGradient:()=>grad,
-    createPattern:()=>({__pattern:1}),measureText:()=>({width:10}),getImageData:()=>({data:[]})};
+  const special={
+    createRadialGradient:()=>{ __ops.createRadialGradient=(__ops.createRadialGradient||0)+1; return grad; },
+    createLinearGradient:()=>{ __ops.createLinearGradient=(__ops.createLinearGradient||0)+1; return grad; },
+    createPattern:()=>{ __ops.createPattern=(__ops.createPattern||0)+1; return {__pattern:1}; },
+    measureText:()=>({width:10}),getImageData:()=>({data:[]})};
   return new Proxy({},{ get(t,p){ if(p in special) return special[p];
-      if(!(p in t)) t[p]=(...a)=>undefined;
+      if(!(p in t)) t[p]=mkCount(p);
       return typeof t[p]==='function'?t[p].bind(null):t[p]; },
     set(t,p,v){ t[p]=v; return true; }});
 }

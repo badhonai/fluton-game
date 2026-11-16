@@ -57,7 +57,8 @@ try{
   assert(catFrameKey(Game.cat)==='cat_hurt','hurt frame priority');
   Game.cat.hurtT=0;
   __tick(90);
-  assert(Render._facePat!==undefined && Render._facePat!==null,'platform face pattern created');
+  assert(Render.worldLayer && Render.worldLayer.width>0 &&
+    Render.worldLayer.height>0,'static level layer baked (tiles+decor offloaded');
 
   /* ---------- encryption ---------- */
   __tick(60);
@@ -189,6 +190,35 @@ try{
   const msPerFrame=(Date.now()-t1)/600;
   console.log('  perf: '+msPerFrame.toFixed(2)+' ms/frame headless (sim+render)');
   assert(msPerFrame<12,'frame budget respected headlessly');
+
+  /* ---------- draw-op budgets (restructured render core) ----------
+     baseline before restructure: 445 ops (251 fillRect, 58 drawImage,
+     46 strokeRect,2 radial gradients) — now: baked level + cone sprites */
+  Game.load(0);
+  __tick(90);
+  global.__ops = {};
+  __tick(1);
+  const o = global.__ops;
+  const fr = o.fillRect||0, di = o.drawImage||0, sr = o.strokeRect||0;
+  console.log('  ops/frame: fillRect='+fr+' drawImage='+di+' strokeRect='+sr+
+    ' radial='+(o.createRadialGradient||0)+' linear='+(o.createLinearGradient||0));
+  assert((o.createRadialGradient||0)===0,'zero radial gradients/frame (cone sprites)');
+  assert((o.createLinearGradient||0)===0,'zero linear gradients/frame (cached skies)');
+  assert(fr<=90,'fillRect budget <=90 [got '+fr+'] (static world baked out)');
+  assert(di<=45,'drawImage budget <=45 [got '+di+']');
+  assert(sr<=10,'strokeRect budget <=10 [got '+sr+']');
+  assert(fr+di+sr<=150,'total raster ops <=150 [got '+(fr+di+sr)+'] (was 445)');
+
+  /* raster = CSS pixels regardless of devicePixelRatio (bean.lol res scaling) */
+  const oldDpr = window.devicePixelRatio;
+  window.devicePixelRatio = 3;
+  __setWH(1280, 720); __tick(2);
+  assert(Render.cv.width === Math.round(Render.W * Render.q) &&
+    Render.cv.height === Math.round(Render.H * Render.q),
+    'raster = CSS pixels x q at DPR=3 (got ' + Render.cv.width + 'x' + Render.cv.height +
+    ', expected ' + Math.round(Render.W * Render.q) + 'x' + Math.round(Render.H * Render.q) + ')');
+  window.devicePixelRatio = oldDpr;
+  __setWH(1280, 720); __tick(2);
 
   /* ---------- screens via actions API ---------- */
   UI.set({screen:'title'}); Game.state='title';

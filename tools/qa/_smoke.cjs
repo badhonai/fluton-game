@@ -30344,6 +30344,7 @@ var Game = {
     this.beams = L.beams;
     this.exit = L.exits[0];
     this.decor = L.decor || [];
+    Render.bakeWorld();
     this.lives = CFG.LIVES;
     this.score = 0;
     this.time = 0;
@@ -30991,7 +30992,7 @@ function tickCam(dt) {
 var Render = {
   cv: null,
   c: null,
-  dpr: 1,
+  q: 1,
   scale: 1,
   vw: 960,
   vh: 540,
@@ -31014,22 +31015,109 @@ var Render = {
       window.addEventListener("resize", () => this.resize());
     }
     this.makeGlow();
+    this.makeCones();
     this.makeVignette();
     this.makeSky();
   },
   resize() {
     if (!this.cv) return;
-    const coarse = window.matchMedia("(pointer:coarse)").matches;
-    this.dpr = Math.min(coarse ? 1.5 : 2, window.devicePixelRatio || 1);
     this.W = window.innerWidth;
     this.H = window.innerHeight;
-    this.cv.width = Math.floor(this.W * this.dpr);
-    this.cv.height = Math.floor(this.H * this.dpr);
     this.scale = Math.min(this.W / CFG.VIEW_W, this.H / CFG.VIEW_H);
     this.vw = this.W / this.scale;
     this.vh = this.H / this.scale;
+    const maxQ = window.matchMedia("(pointer:coarse)").matches ? 1 : 2;
+    if (!this.q) this.q = 1;
+    if (this.q > maxQ) this.q = maxQ;
+    this.rw = Math.max(2, Math.round(this.W * this.q));
+    this.rh = Math.max(2, Math.round(this.H * this.q));
+    this.cv.width = this.rw;
+    this.cv.height = this.rh;
+    this.c.imageSmoothingEnabled = false;
     this.makeVignette();
     this.makeSky();
+  },
+  /* bake the whole static level (tiles, void hatches, decor) once per load */
+  bakeWorld() {
+    this.worldLayer = null;
+    this._skyWorld = null;
+    const L = Game.L;
+    if (!L) return;
+    const w = Math.ceil(L.levelW), h = Math.ceil(L.levelH);
+    if (w < 1 || h < 1 || w > 2e4 || h > 8e3) return;
+    const cv = document.createElement("canvas");
+    cv.width = w;
+    cv.height = h;
+    const x = cv.getContext("2d");
+    x.imageSmoothingEnabled = false;
+    const g2 = this.c.createLinearGradient(0, -100, 0, h);
+    g2.addColorStop(0, "#0a1024");
+    g2.addColorStop(0.7, "#070a16");
+    g2.addColorStop(1, "#06080f");
+    this._skyWorld = g2;
+    const face = Assets.get("face");
+    const pat = face ? x.createPattern(face, "repeat") : null;
+    const strip = Assets.get("plat_top");
+    const solidAt2 = (a, b) => a < 0 || a >= L.W ? true : b < 0 || b >= L.H ? false : !!L.solid[b][a];
+    for (let ty = 0; ty < L.H; ty++) for (let tx = 0; tx < L.W; tx++) {
+      if (!L.solid[ty][tx]) continue;
+      const px = tx * 36, py = ty * 36;
+      if (pat) {
+        x.fillStyle = pat;
+      } else {
+        x.fillStyle = "#0d1526";
+      }
+      x.fillRect(px, py, 36, 36);
+      const above = !solidAt2(tx, ty - 1);
+      x.fillStyle = "rgba(61,245,224,.055)";
+      x.fillRect(px, py, 36, 12);
+      if (above) {
+        if (strip) {
+          x.globalAlpha = 0.95;
+          x.drawImage(strip, px, py - 1, 36, 16);
+          x.globalAlpha = 1;
+        }
+        x.fillStyle = "rgba(150,255,247,.9)";
+        x.fillRect(px, py, 36, 2);
+        x.fillStyle = "rgba(61,245,224,.30)";
+        x.fillRect(px, py + 2, 36, 2);
+      }
+      x.strokeStyle = "rgba(90,130,255,.10)";
+      x.lineWidth = 1;
+      x.strokeRect(px + 0.5, py + 0.5, 35, 35);
+      if (!solidAt2(tx - 1, ty)) {
+        x.fillStyle = "rgba(90,130,255,.14)";
+        x.fillRect(px, py, 2, 36);
+      }
+      if (!solidAt2(tx + 1, ty)) {
+        x.fillStyle = "rgba(90,130,255,.14)";
+        x.fillRect(px + 34, py, 2, 36);
+      }
+    }
+    for (let tx = 0; tx < L.W; tx++) {
+      if (!solidAt2(tx, L.H - 1) && !solidAt2(tx, L.H - 2)) {
+        const px = tx * 36, py = (L.H - 1) * 36;
+        x.strokeStyle = "rgba(255,77,106,.3)";
+        x.lineWidth = 1.5;
+        x.beginPath();
+        x.moveTo(px, py + 8);
+        x.lineTo(px + 18, py + 30);
+        x.moveTo(px + 18, py + 8);
+        x.lineTo(px + 36, py + 30);
+        x.stroke();
+      }
+    }
+    for (const d of Game.decor || []) {
+      const im = Assets.get(d.img);
+      if (!im) continue;
+      drawAsset(x, d.img, d.x, d.y, { scale: d.h * 36 / im.height, flip: d.flip, alpha: 0.92 });
+    }
+    this.worldLayer = cv;
+  },
+  setQuality(q) {
+    const maxQ = window.matchMedia("(pointer:coarse)").matches ? 1 : 2;
+    this.q = Math.max(1, Math.min(q | 0 || 1, maxQ));
+    this.resize();
   },
   makeGlow() {
     const g2 = document.createElement("canvas");
@@ -31156,7 +31244,7 @@ var Render = {
   frame(dt) {
     const c = this.c;
     this.t += dt;
-    c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    c.setTransform(this.q, 0, 0, this.q, 0, 0);
     c.fillStyle = "#06080f";
     c.fillRect(0, 0, this.W, this.H);
     if (Game.state === "title" || Game.state === "select" || Game.state === "how") {
@@ -31172,9 +31260,9 @@ var Render = {
       sx = (Math.random() - 0.5) * Game.cam.shake;
       sy = (Math.random() - 0.5) * Game.cam.shake;
     }
-    c.setTransform(S * this.dpr, 0, 0, S * this.dpr, (ox + Game.cam.x * S + sx * S) * this.dpr, (oy + Game.cam.y * S + sy * S) * this.dpr);
+    c.setTransform(S * this.q, 0, 0, S * this.q, (ox + Game.cam.x * S + sx * S) * this.q, (oy + Game.cam.y * S + sy * S) * this.q);
     this.drawWorld(c);
-    c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    c.setTransform(this.q, 0, 0, this.q, 0, 0);
     if (this.vign) c.drawImage(this.vign, 0, 0);
     if (Game.flash > 0) {
       c.globalAlpha = Game.flash * 0.5;
@@ -31270,72 +31358,12 @@ var Render = {
     if (this.vign) c.drawImage(this.vign, 0, 0);
   },
   drawWorld(c) {
-    const L = Game.L, S = this.scale;
     const camX = Game.cam.x, camY = Game.cam.y;
     const vw = this.vw, vh = this.vh;
-    const grd = c.createLinearGradient(0, camY * 0.2 - 100, 0, camY * 0.2 + vh);
-    grd.addColorStop(0, "#0a1024");
-    grd.addColorStop(0.7, "#070a16");
-    grd.addColorStop(1, "#06080f");
-    c.fillStyle = grd;
+    c.fillStyle = this._skyWorld || "#070a16";
     c.fillRect(camX, camY, vw, vh);
-    const tx0 = Math.max(0, Math.floor(camX / 36) - 1), tx1 = Math.min(L.W - 1, Math.ceil((camX + vw) / 36) + 1);
-    const ty0 = Math.max(0, Math.floor(camY / 36) - 1), ty1 = Math.min(L.H - 1, Math.ceil((camY + vh) / 36) + 1);
-    if (this._facePat === void 0 && Assets.ready) {
-      this._facePat = Assets.has("face") ? this.c.createPattern(Assets.get("face"), "repeat") : null;
-    }
-    for (let ty = ty0; ty <= ty1; ty++) for (let tx = tx0; tx <= tx1; tx++) {
-      if (!L.solid[ty][tx]) continue;
-      const x = tx * 36, y = ty * 36;
-      if (this._facePat) c.fillStyle = this._facePat;
-      else c.fillStyle = "#0d1526";
-      c.fillRect(x, y, 36, 36);
-      const above = !solidAt(tx, ty - 1);
-      c.fillStyle = "rgba(61,245,224,.055)";
-      c.fillRect(x, y, 36, 12);
-      if (above) {
-        const strip = Assets.get("plat_top");
-        if (strip) {
-          c.globalAlpha = 0.95;
-          c.drawImage(strip, x, y - 1, 36, 16);
-          c.globalAlpha = 1;
-        }
-        c.fillStyle = "rgba(150,255,247,.9)";
-        c.fillRect(x, y, 36, 2);
-        c.fillStyle = "rgba(61,245,224,.30)";
-        c.fillRect(x, y + 2, 36, 2);
-      }
-      c.strokeStyle = "rgba(90,130,255,.10)";
-      c.lineWidth = 1;
-      c.strokeRect(x + 0.5, y + 0.5, 35, 35);
-      if (!solidAt(tx - 1, ty)) {
-        c.fillStyle = "rgba(90,130,255,.14)";
-        c.fillRect(x, y, 2, 36);
-      }
-      if (!solidAt(tx + 1, ty)) {
-        c.fillStyle = "rgba(90,130,255,.14)";
-        c.fillRect(x + 34, y, 2, 36);
-      }
-    }
+    if (this.worldLayer) c.drawImage(this.worldLayer, 0, 0);
     for (const cam of Game.cams) this.drawCone(c, cam);
-    for (let tx = tx0; tx <= tx1; tx++) {
-      if (!solidAt(tx, L.H - 1) && !solidAt(tx, L.H - 2)) {
-        const x = tx * 36, y = (L.H - 1) * 36;
-        c.strokeStyle = "rgba(255,77,106,.3)";
-        c.lineWidth = 1.5;
-        c.beginPath();
-        c.moveTo(x, y + 8);
-        c.lineTo(x + 18, y + 30);
-        c.moveTo(x + 18, y + 8);
-        c.lineTo(x + 36, y + 30);
-        c.stroke();
-      }
-    }
-    for (const d of Game.decor || []) {
-      const im = Assets.get(d.img);
-      if (!im) continue;
-      drawAsset(c, d.img, d.x, d.y, { scale: d.h * 36 / im.height, flip: d.flip, alpha: 0.92 });
-    }
     for (const s of Game.sps) {
       c.fillStyle = s.active ? "rgba(61,245,224,.2)" : "rgba(61,245,224,.07)";
       rr(c, s.x - 11, s.y - 30, 22, 30, 5);
@@ -31378,34 +31406,43 @@ var Render = {
     drawCatGame(c);
     FX.draw(c);
   },
+  makeCones() {
+    const r = Math.ceil(CFG.CAM_RANGE) + 6, size = r * 2, h = CFG.CAM_HALF;
+    const build = (stops, edge) => {
+      const cv = document.createElement("canvas");
+      cv.width = cv.height = size;
+      const x = cv.getContext("2d");
+      x.translate(r, r);
+      const g2 = x.createRadialGradient(0, 0, 6, 0, 0, r);
+      g2.addColorStop(0, stops[0]);
+      g2.addColorStop(1, stops[1]);
+      x.fillStyle = g2;
+      x.beginPath();
+      x.moveTo(0, 0);
+      x.arc(0, 0, r, -h, h);
+      x.closePath();
+      x.fill();
+      x.strokeStyle = edge;
+      x.lineWidth = 1.5;
+      x.beginPath();
+      x.moveTo(0, 0);
+      x.lineTo(Math.cos(-h) * r, Math.sin(-h) * r);
+      x.moveTo(0, 0);
+      x.lineTo(Math.cos(h) * r, Math.sin(h) * r);
+      x.stroke();
+      return cv;
+    };
+    this._coneN = build(["rgba(255,77,106,.3)", "rgba(255,77,106,0)"], "rgba(255,77,106,.45)");
+    this._coneD = build(["rgba(255,60,80,.5)", "rgba(255,60,80,0)"], "rgba(255,120,140,.9)");
+    this._coneR = r;
+  },
   drawCone(c, cam) {
     const detect = cam.glow > 0.4;
-    const r = CFG.CAM_RANGE, h = CFG.CAM_HALF, a = cam.ang;
+    const r = this._coneR || CFG.CAM_RANGE;
     c.save();
     c.translate(cam.x, cam.y);
-    c.rotate(a);
-    const g2 = c.createRadialGradient(0, 0, 6, 0, 0, r);
-    if (detect) {
-      g2.addColorStop(0, "rgba(255,60,80,.5)");
-      g2.addColorStop(1, "rgba(255,60,80,0)");
-    } else {
-      g2.addColorStop(0, "rgba(255,77,106,.3)");
-      g2.addColorStop(1, "rgba(255,77,106,0)");
-    }
-    c.fillStyle = g2;
-    c.beginPath();
-    c.moveTo(0, 0);
-    c.arc(0, 0, r, -h, h);
-    c.closePath();
-    c.fill();
-    c.strokeStyle = detect ? "rgba(255,120,140,.9)" : "rgba(255,77,106,.45)";
-    c.lineWidth = 1.5;
-    c.beginPath();
-    c.moveTo(0, 0);
-    c.lineTo(Math.cos(-h) * r, Math.sin(-h) * r);
-    c.moveTo(0, 0);
-    c.lineTo(Math.cos(h) * r, Math.sin(h) * r);
-    c.stroke();
+    c.rotate(cam.ang);
+    c.drawImage(detect ? this._coneD : this._coneN, -r, -r);
     c.restore();
     const tKey = detect ? "turret_alert" : "turret";
     const tIm = Assets.get(tKey);
@@ -32333,13 +32370,22 @@ function uiInit() {
 var lastTs = 0;
 var active = false;
 var booted = false;
+var stepAcc = 0;
+var STEP = 1 / 60;
 function loop(ts) {
   requestAnimationFrame(loop);
   const dt = Math.min(0.05, (ts - lastTs) / 1e3 || 0);
   lastTs = ts;
   if (!active) return;
   if (Game.state === "play") {
-    updateGame(dt);
+    stepAcc += dt;
+    let steps = 0;
+    while (stepAcc >= STEP && steps < 3) {
+      updateGame(STEP);
+      stepAcc -= STEP;
+      steps++;
+    }
+    if (steps === 3) stepAcc = 0;
     Input.consume();
     syncTouch();
     Render.frame(dt);
@@ -33623,17 +33669,18 @@ function GlassDash({ onExit }) {
     const cv = cvRef.current;
     const ctx = cv.getContext("2d");
     let raf = 0, last = performance.now(), uiT = 0, hintT = 6, shownResults = false;
+    let stepAcc2 = 0;
+    const STEP2 = 1 / 60;
     const setPhaseBoth = (p) => {
       phaseRef.current = p;
       setPhase(p);
     };
     const resize = () => {
-      const dpr = Math.min(2, window.devicePixelRatio || 1);
       const w = cv.clientWidth || window.innerWidth;
       const h = cv.clientHeight || window.innerHeight;
-      cv.width = Math.max(1, Math.floor(w * dpr));
-      cv.height = Math.max(1, Math.floor(h * dpr));
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      cv.width = Math.max(1, Math.round(w));
+      cv.height = Math.max(1, Math.round(h));
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.imageSmoothingEnabled = false;
       eng.layout(w, h);
     };
@@ -33697,7 +33744,16 @@ function GlassDash({ onExit }) {
       raf = requestAnimationFrame(loop2);
       const dt = Math.min(0.05, (ts - last) / 1e3);
       last = ts;
-      if (!pausedRef.current) eng.update(dt);
+      if (!pausedRef.current) {
+        stepAcc2 += dt;
+        let steps = 0;
+        while (stepAcc2 >= STEP2 && steps < 3) {
+          eng.update(STEP2);
+          stepAcc2 -= STEP2;
+          steps++;
+        }
+        if (steps === 3) stepAcc2 = 0;
+      }
       for (const ev of eng.drain()) {
         if (!G2) break;
         const sx = ev.x != null ? ev.x - eng.dist : 0;
