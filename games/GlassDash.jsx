@@ -24,16 +24,18 @@ export default function GlassDash({ onExit }){
     const cv = cvRef.current;
     const ctx = cv.getContext('2d');
     let raf = 0, last = performance.now(), uiT = 0, hintT = 6, shownResults = false;
+    let stepAcc = 0; const STEP = 1 / 60;
 
     const setPhaseBoth = p => { phaseRef.current = p; setPhase(p); };
 
     const resize = () => {
-      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      /* fixed CSS-pixel raster (bean.lol resolution scaling) — the browser
+         nearest-upscales to device pixels; DPR no longer multiplies fill-rate */
       const w = cv.clientWidth || window.innerWidth;
       const h = cv.clientHeight || window.innerHeight;
-      cv.width = Math.max(1, Math.floor(w * dpr));
-      cv.height = Math.max(1, Math.floor(h * dpr));
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      cv.width = Math.max(1, Math.round(w));
+      cv.height = Math.max(1, Math.round(h));
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.imageSmoothingEnabled = false; /* pixel-arcade */
       eng.layout(w, h);
     };
@@ -91,7 +93,13 @@ export default function GlassDash({ onExit }){
       raf = requestAnimationFrame(loop);
       const dt = Math.min(0.05, (ts - last) / 1000);
       last = ts;
-      if(!pausedRef.current) eng.update(dt);
+      if(!pausedRef.current){
+        /* fixed 60Hz sim — stable feel regardless of refresh rate or jank */
+        stepAcc += dt;
+        let steps = 0;
+        while(stepAcc >= STEP && steps < 3){ eng.update(STEP); stepAcc -= STEP; steps++; }
+        if(steps === 3) stepAcc = 0;
+      }
 
       for(const ev of eng.drain()){
         if(!G) break;

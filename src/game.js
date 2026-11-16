@@ -393,6 +393,7 @@ const Game={
     this.notes=L.notes;this.cells=L.cells;this.yarns=L.yarns;this.sps=L.sps;
     this.beams=L.beams;this.exit=L.exits[0];
     this.decor=L.decor||[];
+    Render.bakeWorld();
     this.lives=CFG.LIVES;this.score=0;this.time=0;this.alarms=0;
     this.det=0;this.flash=0;this.winT=-1;this.yarnCount=1;
     this.respawn={x:L.spawn.x,y:L.spawn.y};
@@ -785,7 +786,7 @@ function tickCam(dt){
 
 /* ================= 9 · RENDER ================= */
 const Render={
-  cv:null,c:null,dpr:1,scale:1,vw:960,vh:540,W:0,H:0,
+  cv:null,c:null,q:1,scale:1,vw:960,vh:540,W:0,H:0,
   glow:null,vign:null,skyFar:null,skyMid:null,t:0,skySeed:7,
   init(){
     this.cv=$('cv');if(!this.cv)return;
@@ -796,19 +797,77 @@ const Render={
     this.c.imageSmoothingEnabled=false;
     this.resize();
     if(!this._inited){this._inited=true;window.addEventListener('resize',()=>this.resize());}
-    this.makeGlow();this.makeVignette();this.makeSky();
+    this.makeGlow();this.makeCones();this.makeVignette();this.makeSky();
   },
   resize(){
     if(!this.cv)return;
-    const coarse=window.matchMedia('(pointer:coarse)').matches;
-    /* A 1.5x backing store on touch devices cuts fill-rate and memory cost
-       while preserving crisp rendering at typical phone viewing distances. */
-    this.dpr=Math.min(coarse?1.5:2,window.devicePixelRatio||1);
     this.W=window.innerWidth;this.H=window.innerHeight;
-    this.cv.width=Math.floor(this.W*this.dpr);this.cv.height=Math.floor(this.H*this.dpr);
     this.scale=Math.min(this.W/CFG.VIEW_W,this.H/CFG.VIEW_H);
     this.vw=this.W/this.scale;this.vh=this.H/this.scale;
+    /* bean.lol-style render-resolution scaling: raster = CSS pixels x q,
+       NEVER device pixels. The GPU nearest-upscales (pixel style), so a
+       retina phone renders 4x fewer pixels than the old DPR path. */
+    const maxQ=window.matchMedia('(pointer:coarse)').matches?1:2;
+    if(!this.q)this.q=1;                 /* auto quality starts at the fast tier */
+    if(this.q>maxQ)this.q=maxQ;
+    this.rw=Math.max(2,Math.round(this.W*this.q));
+    this.rh=Math.max(2,Math.round(this.H*this.q));
+    this.cv.width=this.rw;this.cv.height=this.rh;
+    this.c.imageSmoothingEnabled=false;
     this.makeVignette();this.makeSky();
+  },
+  /* bake the whole static level (tiles, void hatches, decor) once per load */
+  bakeWorld(){
+    this.worldLayer=null;this._skyWorld=null;
+    const L=Game.L;if(!L)return;
+    const w=Math.ceil(L.levelW),h=Math.ceil(L.levelH);
+    if(w<1||h<1||w>20000||h>8000)return;
+    const cv=document.createElement('canvas');cv.width=w;cv.height=h;
+    const x=cv.getContext('2d');
+    x.imageSmoothingEnabled=false;
+    /* world sky gradient (level-static) */
+    const g=this.c.createLinearGradient(0,-100,0,h);
+    g.addColorStop(0,'#0a1024');g.addColorStop(.7,'#070a16');g.addColorStop(1,'#06080f');
+    this._skyWorld=g;
+    const face=Assets.get('face');
+    const pat=face?x.createPattern(face,'repeat'):null;
+    const strip=Assets.get('plat_top');
+    const solidAt=(a,b)=>a<0||a>=L.W?true:(b<0||b>=L.H?false:!!L.solid[b][a]);
+    for(let ty=0;ty<L.H;ty++)for(let tx=0;tx<L.W;tx++){
+      if(!L.solid[ty][tx])continue;
+      const px=tx*36,py=ty*36;
+      if(pat){x.fillStyle=pat;}else{x.fillStyle='#0d1526';}
+      x.fillRect(px,py,36,36);
+      const above=!solidAt(tx,ty-1);
+      x.fillStyle='rgba(61,245,224,.055)';x.fillRect(px,py,36,12);
+      if(above){
+        if(strip){x.globalAlpha=.95;x.drawImage(strip,px,py-1,36,16);x.globalAlpha=1;}
+        x.fillStyle='rgba(150,255,247,.9)';x.fillRect(px,py,36,2);
+        x.fillStyle='rgba(61,245,224,.30)';x.fillRect(px,py+2,36,2);}
+      x.strokeStyle='rgba(90,130,255,.10)';x.lineWidth=1;
+      x.strokeRect(px+.5,py+.5,35,35);
+      if(!solidAt(tx-1,ty)){x.fillStyle='rgba(90,130,255,.14)';x.fillRect(px,py,2,36);}
+      if(!solidAt(tx+1,ty)){x.fillStyle='rgba(90,130,255,.14)';x.fillRect(px+34,py,2,36);}
+    }
+    /* void hatches (static) */
+    for(let tx=0;tx<L.W;tx++){
+      if(!solidAt(tx,L.H-1)&&!solidAt(tx,L.H-2)){
+        const px=tx*36,py=(L.H-1)*36;
+        x.strokeStyle='rgba(255,77,106,.3)';x.lineWidth=1.5;
+        x.beginPath();x.moveTo(px,py+8);x.lineTo(px+18,py+30);
+        x.moveTo(px+18,py+8);x.lineTo(px+36,py+30);x.stroke();}
+    }
+    /* static decor props */
+    for(const d of (Game.decor||[])){
+      const im=Assets.get(d.img);if(!im)continue;
+      drawAsset(x,d.img,d.x,d.y,{scale:(d.h*36)/im.height,flip:d.flip,alpha:.92});
+    }
+    this.worldLayer=cv;
+  },
+  setQuality(q){
+    const maxQ=window.matchMedia('(pointer:coarse)').matches?1:2;
+    this.q=Math.max(1,Math.min(q|0||1,maxQ));
+    this.resize();
   },
   makeGlow(){
     const g=document.createElement('canvas');g.width=g.height=128;
@@ -899,7 +958,7 @@ const Render={
   frame(dt){
     const c=this.c;
     this.t+=dt;
-    c.setTransform(this.dpr,0,0,this.dpr,0,0);
+    c.setTransform(this.q,0,0,this.q,0,0);
     c.fillStyle='#06080f';c.fillRect(0,0,this.W,this.H);
     if(Game.state==='title'||Game.state==='select'||Game.state==='how'){
       this.drawTitleScene(c);return;}
@@ -910,10 +969,10 @@ const Render={
     const ox=(this.W-this.vw*S)/2, oy=(this.H-this.vh*S)/2;
     let sx=0,sy=0;
     if(Game.cam.shake>0){sx=(Math.random()-.5)*Game.cam.shake;sy=(Math.random()-.5)*Game.cam.shake;}
-    c.setTransform(S*this.dpr,0,0,S*this.dpr,(ox+Game.cam.x*S+sx*S)*this.dpr,(oy+Game.cam.y*S+sy*S)*this.dpr);
+    c.setTransform(S*this.q,0,0,S*this.q,(ox+Game.cam.x*S+sx*S)*this.q,(oy+Game.cam.y*S+sy*S)*this.q);
     this.drawWorld(c);
     /* screen-space overlays */
-    c.setTransform(this.dpr,0,0,this.dpr,0,0);
+    c.setTransform(this.q,0,0,this.q,0,0);
     if(this.vign)c.drawImage(this.vign,0,0);
     if(Game.flash>0){c.globalAlpha=Game.flash*.5;c.fillStyle='#ff2038';c.fillRect(0,0,this.W,this.H);c.globalAlpha=1;}
   },
@@ -964,60 +1023,16 @@ const Render={
   },
 
   drawWorld(c){
-    const L=Game.L,S=this.scale;
     const camX=Game.cam.x,camY=Game.cam.y;
     const vw=this.vw,vh=this.vh;
-    /* --- sky --- */
-    const grd=c.createLinearGradient(0,camY*.2-100,0,camY*.2+vh);
-    grd.addColorStop(0,'#0a1024');grd.addColorStop(.7,'#070a16');grd.addColorStop(1,'#06080f');
-    c.fillStyle=grd;c.fillRect(camX,camY,vw,vh);
-    /* sky layers drawn in screen space (drawSkyLayers) */
-
-    /* camera view bounds in tiles */
-    const tx0=Math.max(0,Math.floor(camX/36)-1),tx1=Math.min(L.W-1,Math.ceil((camX+vw)/36)+1);
-    const ty0=Math.max(0,Math.floor(camY/36)-1),ty1=Math.min(L.H-1,Math.ceil((camY+vh)/36)+1);
-
-    /* --- tiles: generated glass face + neon edge strip --- */
-    if(this._facePat===undefined && Assets.ready){
-      this._facePat = Assets.has('face') ? this.c.createPattern(Assets.get('face'),'repeat') : null;
-    }
-    for(let ty=ty0;ty<=ty1;ty++)for(let tx=tx0;tx<=tx1;tx++){
-      if(!L.solid[ty][tx])continue;
-      const x=tx*36,y=ty*36;
-      if(this._facePat)c.fillStyle=this._facePat;else c.fillStyle='#0d1526';
-      c.fillRect(x,y,36,36);
-      const above=!solidAt(tx,ty-1);
-      /* A compact top-light pass replaces one gradient allocation per
-         visible tile per frame. The platform sprite supplies the detailed edge. */
-      c.fillStyle='rgba(61,245,224,.055)';
-      c.fillRect(x,y,36,12);
-      if(above){
-        const strip=Assets.get('plat_top');
-        if(strip){c.globalAlpha=.95;c.drawImage(strip,x,y-1,36,16);c.globalAlpha=1;}
-        c.fillStyle='rgba(150,255,247,.9)';c.fillRect(x,y,36,2);
-        c.fillStyle='rgba(61,245,224,.30)';c.fillRect(x,y+2,36,2);}
-      c.strokeStyle='rgba(90,130,255,.10)';c.lineWidth=1;
-      c.strokeRect(x+.5,y+.5,35,35);
-      if(!solidAt(tx-1,ty)){c.fillStyle='rgba(90,130,255,.14)';c.fillRect(x,y,2,36);}
-      if(!solidAt(tx+1,ty)){c.fillStyle='rgba(90,130,255,.14)';c.fillRect(x+34,y,2,36);}
-    }
-    /* --- searchlight cones (over ground, under entities) --- */
+    /* world sky — gradient cached with the bake (zero per-frame allocs) */
+    c.fillStyle=this._skyWorld||'#070a16';
+    c.fillRect(camX,camY,vw,vh);
+    /* static level layer: tiles + void hatches + decor baked once per load —
+       one drawImage replaces ~300 fill/stroke calls per frame */
+    if(this.worldLayer)c.drawImage(this.worldLayer,0,0);
+    /* --- searchlight cones (sprite-cached, over ground, under entities) --- */
     for(const cam of Game.cams)this.drawCone(c,cam);
-
-    /* void hatches */
-    for(let tx=tx0;tx<=tx1;tx++){
-      if(!solidAt(tx,L.H-1)&&!solidAt(tx,L.H-2)){
-        const x=tx*36,y=(L.H-1)*36;
-        c.strokeStyle='rgba(255,77,106,.3)';c.lineWidth=1.5;
-        c.beginPath();c.moveTo(x,y+8);c.lineTo(x+18,y+30);c.moveTo(x+18,y+8);c.lineTo(x+36,y+30);c.stroke();}
-    }
-
-    /* --- decor props (behind gameplay) --- */
-    for(const d of (Game.decor||[])){
-      const im=Assets.get(d.img);
-      if(!im)continue;
-      drawAsset(c,d.img,d.x,d.y,{scale:(d.h*36)/im.height,flip:d.flip,alpha:.92});
-    }
 
     /* --- checkpoints --- */
     for(const s of Game.sps){
@@ -1066,19 +1081,29 @@ const Render={
     FX.draw(c);
   },
 
+  makeCones(){
+    /* bake the two searchlight wedges ONCE (the gradient lives here, never per frame) */
+    const r=Math.ceil(CFG.CAM_RANGE)+6,size=r*2,h=CFG.CAM_HALF;
+    const build=(stops,edge)=>{
+      const cv=document.createElement('canvas');cv.width=cv.height=size;
+      const x=cv.getContext('2d');x.translate(r,r);
+      const g=x.createRadialGradient(0,0,6,0,0,r);
+      g.addColorStop(0,stops[0]);g.addColorStop(1,stops[1]);
+      x.fillStyle=g;x.beginPath();x.moveTo(0,0);x.arc(0,0,r,-h,h);x.closePath();x.fill();
+      x.strokeStyle=edge;x.lineWidth=1.5;
+      x.beginPath();x.moveTo(0,0);x.lineTo(Math.cos(-h)*r,Math.sin(-h)*r);
+      x.moveTo(0,0);x.lineTo(Math.cos(h)*r,Math.sin(h)*r);x.stroke();
+      return cv;
+    };
+    this._coneN=build(['rgba(255,77,106,.3)','rgba(255,77,106,0)'],'rgba(255,77,106,.45)');
+    this._coneD=build(['rgba(255,60,80,.5)','rgba(255,60,80,0)'],'rgba(255,120,140,.9)');
+    this._coneR=r;
+  },
   drawCone(c,cam){
     const detect=cam.glow>.4;
-    const r=CFG.CAM_RANGE,h=CFG.CAM_HALF,a=cam.ang;
-    c.save();c.translate(cam.x,cam.y);c.rotate(a);
-    const g=c.createRadialGradient(0,0,6,0,0,r);
-    if(detect){g.addColorStop(0,'rgba(255,60,80,.5)');g.addColorStop(1,'rgba(255,60,80,0)');}
-    else{g.addColorStop(0,'rgba(255,77,106,.3)');g.addColorStop(1,'rgba(255,77,106,0)');}
-    c.fillStyle=g;
-    c.beginPath();c.moveTo(0,0);c.arc(0,0,r,-h,h);c.closePath();c.fill();
-    c.strokeStyle=detect?'rgba(255,120,140,.9)':'rgba(255,77,106,.45)';
-    c.lineWidth=1.5;
-    c.beginPath();c.moveTo(0,0);c.lineTo(Math.cos(-h)*r,Math.sin(-h)*r);
-    c.moveTo(0,0);c.lineTo(Math.cos(h)*r,Math.sin(h)*r);c.stroke();
+    const r=this._coneR||CFG.CAM_RANGE;
+    c.save();c.translate(cam.x,cam.y);c.rotate(cam.ang);
+    c.drawImage(detect?this._coneD:this._coneN,-r,-r);
     c.restore();
     /* turret: generated sprite with procedural fallback */
     const tKey=detect?'turret_alert':'turret';
@@ -1624,13 +1649,18 @@ function uiInit(){
 }
 
 /* ================= 12 · MAIN LOOP ================= */
-let lastTs=0,active=false,booted=false;
+let lastTs=0,active=false,booted=false,stepAcc=0;const STEP=1/60;
 function loop(ts){
   requestAnimationFrame(loop);
   const dt=Math.min(.05,(ts-lastTs)/1000||0);lastTs=ts;
   if(!active)return;
   if(Game.state==='play'){
-    updateGame(dt);Input.consume();syncTouch();Render.frame(dt);return;
+    /* fixed 60Hz simulation — stable physics regardless of display refresh
+       or jank; render once after the steps (pixel game, no interpolation) */
+    stepAcc+=dt;let steps=0;
+    while(stepAcc>=STEP&&steps<3){updateGame(STEP);stepAcc-=STEP;steps++;}
+    if(steps===3)stepAcc=0;
+    Input.consume();syncTouch();Render.frame(dt);return;
   }
   Input.consume();syncTouch();
   if(Game.state==='title'||Game.state==='select'||Game.state==='how')FX.update(dt);

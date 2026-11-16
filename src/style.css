@@ -25,7 +25,8 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000;
   font-family:var(--f-ui);color:var(--tx);font-size:15px;line-height:1.6;
   user-select:none;-webkit-user-select:none;touch-action:none}
 #stage{position:fixed;inset:0;background:var(--bg);overflow:hidden}
-canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block}
+canvas#cv{position:absolute;inset:0;width:100%;height:100%;display:block;
+  image-rendering:pixelated;image-rendering:-moz-crisp-edges}
 .hidden{display:none!important}
 #stage img{image-rendering:pixelated;image-rendering:-moz-crisp-edges}
 img{max-width:100%}
@@ -410,7 +411,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
    ============================================================ */
 .dash-root{position:absolute;inset:0;overflow:hidden;background:#04050b}
 .dash-cv{position:absolute;inset:0;width:100%;height:100%;display:block;
-  touch-action:none;cursor:pointer}
+  touch-action:none;cursor:pointer;image-rendering:pixelated}
 .dash-hud{position:absolute;top:0;left:0;right:0;display:flex;align-items:flex-start;
   gap:9px;padding:calc(10px + var(--safe-t)) calc(10px + var(--safe-l)) 10px;
   pointer-events:none;z-index:5}

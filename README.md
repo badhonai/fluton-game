@@ -5,6 +5,20 @@ platformer starring Fluton's official tuxedo-cat mascot) and **Glass Dash**
 (a one-button endless runner). Console-style home screen with game icons;
 games are modules with mount/unmount lifecycles over one shared engine.
 
+## Performance architecture (bean.lol playbook, measured)
+
+- **CSS-pixel raster** — canvas backing = window CSS px × q (never device px);
+  the GPU nearest-upscales (pixel style). Retina phones render **4-9× fewer
+  pixels** than the old DPR path. `Render.setQuality(q)` exposes bean.lol-style
+  resolution tiers for a future settings slider.
+- **Baked static level** — tiles, void hatches and decor render once per load
+  into an offscreen layer; each frame is one `drawImage` instead of ~300 ops.
+- **Cone sprites** — searchlight wedges baked once (normal/alert variants);
+  zero gradient allocations per frame.
+- **Fixed 60Hz timestep** — stable physics on any refresh rate (engine + Dash).
+- **QA budgets** — headless op-counting asserts: `fillRect<=90`, `drawImage<=45`,
+  `strokeRect<=10`, zero gradients; measured **445 → 143 ops/frame (−68%)**.
+
 ## Design direction: PIXEL ARCADE (style E, chosen from the mockup round)
 
 Embedded OFL pixel fonts — **Press Start 2P** (display), **Silkscreen** (UI),
