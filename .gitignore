@@ -3,3 +3,5 @@ node_modules/
 __pycache__/
 dist/index.html
 assets/source/
+tools/qa/_run_*.js
+tools/qa/_smoke*.cjs
