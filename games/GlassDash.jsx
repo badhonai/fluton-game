@@ -3,6 +3,7 @@ import { DashEngine, DASH_BEST_KEY } from './dash/engine.js';
 if(typeof window!=='undefined'){ window.__DASH = DashEngine; window.__DASH_KEY = DASH_BEST_KEY; }
 import { hideImg } from '../react-src/arcade/store.js';
 import { Icon } from '../react-src/ui/icons.jsx';
+import * as Dialog from '@radix-ui/react-dialog';
 
 /* Glass Dash — React host: canvas loop, HUD, pause & results overlays.
    mount/unmount lifecycle = effect cleanup (arcade-safe). */
@@ -12,6 +13,7 @@ export default function GlassDash({ onExit }){
   const pausedRef = useRef(false);
   const phaseRef = useRef('run');
   const [phase, setPhase] = useState('run');          /* run | paused | results */
+  const [assetsReady, setAssetsReady] = useState(false);
   const [hud, setHud] = useState({ score: 0, notes: 0 });
   const [result, setResult] = useState({ score:0, best:0, notes:0, record:false });
 
@@ -52,7 +54,10 @@ export default function GlassDash({ onExit }){
 
     const onKey = e => {
       if(G && G.SFX) G.SFX.resume();
-      if(e.code === 'Escape'){ e.preventDefault(); togglePause(); return; }
+      if(e.code === 'Escape'){ e.preventDefault();
+        /* open only — Radix Dialog owns closing (no double-toggle race) */
+        if(phaseRef.current === 'run'){ pausedRef.current = true; setPhaseBoth('paused'); }
+        return; }
       if(e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW'){
         e.preventDefault();
         if(phaseRef.current === 'run'){ eng.jump(); hintT = 0; }
@@ -127,9 +132,17 @@ export default function GlassDash({ onExit }){
       if(uiT > 0.1){ uiT = 0; setHud({ score: eng.score, notes: eng.notes }); }
       hintT -= dt;
     };
-    raf = requestAnimationFrame(loop);
+    /* lazy-load ONLY Dash's own art group, then start the loop */
+    let cancelled = false;
+    window.__GAME.Assets.loadAll(null, 'dash').then(() => {
+      if(cancelled) return;
+      setAssetsReady(true);
+      last = performance.now();
+      raf = requestAnimationFrame(loop);
+    });
 
     return () => {
+      cancelled = true;
       cancelAnimationFrame(raf);
       window.removeEventListener('resize', resize);
       window.removeEventListener('keydown', onKey);
@@ -162,26 +175,28 @@ export default function GlassDash({ onExit }){
         <div className={'dash-hint' + (hud.score > 0 ? ' gone' : '')}>SPACE / TAP — JUMP · hold for higher</div>
       )}
 
-      {phase === 'paused' && (
-        <div className="screen dash-overlay" id="scr-dash-pause">
-          <div className="pausecard">
-            <h2>PAUSED</h2>
-            <button className="btn primary" id="bDashResume"
-              onClick={() => { pausedRef.current = false; setPhase('run'); phaseRef.current = 'run'; }}>
-              <Icon name="play" size={14} fill/> RESUME
-            </button>
-            <button className="btn ghost" id="bDashHome" onClick={onExit}>
-              <Icon name="home" size={14}/> ARCADE HOME
-            </button>
-          </div>
-        </div>
-      )}
+      <Dialog.Root open={phase === 'paused'}
+        onOpenChange={o => { if(!o){ pausedRef.current = false; phaseRef.current = 'run'; setPhase('run'); } }}>
+        <Dialog.Overlay className="dlg-overlay"/>
+        <Dialog.Content className="pausecard dlg-card" aria-label="Paused">
+          <Dialog.Title className="pause-title">PAUSED</Dialog.Title>
+          <button className="btn primary" id="bDashResume"
+            onClick={() => { pausedRef.current = false; phaseRef.current = 'run'; setPhase('run'); }}>
+            <Icon name="play" size={14} fill/> RESUME
+          </button>
+          <button className="btn ghost" id="bDashHome" onClick={onExit}>
+            <Icon name="home" size={14}/> ARCADE HOME
+          </button>
+        </Dialog.Content>
+      </Dialog.Root>
 
-      {phase === 'results' && (
-        <div className="screen dash-overlay" id="scr-dash-results">
-          <div className="pausecard results-card">
-            <div className="kicker">RUN COMPLETE</div>
-            <div className="ov-title dead">SHATTERED</div>
+      <Dialog.Root open={phase === 'results'}
+        onOpenChange={() => { /* results are not dismissible */ }}>
+        <Dialog.Overlay className="dlg-overlay"/>
+        <Dialog.Content className="pausecard results-card dlg-card"
+          onEscapeKeyDown={e => e.preventDefault()}
+          onInteractOutside={e => e.preventDefault()}>
+          <Dialog.Title className="ov-title dead">SHATTERED</Dialog.Title>
             {result.record && <div className="award gold" style={{ animationDelay:'.3s' }}>NEW BEST!</div>}
             <div className="breakdown">
               <div className="brow"><span>SCORE</span><b>{result.score}</b></div>
@@ -197,9 +212,10 @@ export default function GlassDash({ onExit }){
             <button className="btn ghost" id="bDashHome2" onClick={onExit}>
               <Icon name="home" size={14}/> ARCADE HOME
             </button>
-          </div>
-        </div>
-      )}
+        </Dialog.Content>
+      </Dialog.Root>
+
+      {!assetsReady && <div className="dash-loading">LOADING…</div>}
     </div>
   );
 }

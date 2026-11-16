@@ -55,9 +55,8 @@ export default function TitleScreen({ st }){
               <Icon name="arrow-left" size={13}/> ARCADE
             </button>
           )}
-          <button className="btn chipbtn" id="bSoundT" onClick={() => g.actions.sound()}>
-            <Icon name={st.muted ? 'volume-x' : 'volume-2'} size={13}/>
-            SOUND: {st.muted ? 'OFF' : 'ON'}
+          <button className="btn chipbtn" id="bSettings" onClick={() => g.actions.settings()}>
+            <Icon name="settings" size={13}/> SETTINGS
           </button>
           <ResetButton st={st}/>
           <FullscreenBtn/>

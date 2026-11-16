@@ -24,7 +24,7 @@ ok(html.includes('loading heist assets') && html.includes('42%'), 'loading scree
 html = renderAt('title');
 ok(html.includes('GLASS HOUSE') && html.includes('id="bPlay"'), 'title renders logo + play button');
 ok(html.includes('assets/character/cat/wave.png'), 'title cat showcase present');
-ok(html.includes('RESET PROGRESS') && html.includes('id="bSoundT"'), 'settings row present');
+ok(html.includes('id="bSettings"') && html.includes('id="bReset"'), 'settings row present');
 ok(html.includes('progress:'), 'progress line present');
 
 /* level select */

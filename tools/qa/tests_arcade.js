@@ -8,7 +8,8 @@ try{
   /* ---------- preload ---------- */
   await UIA.start();
   assert(UIA.get().ready===true,'arcade ready after preload');
-  assert(Assets.ready===true && Assets.total>=50,'shared asset pool loaded ('+Assets.total+')');
+  assert(Assets.ready===true,'home group loaded ('+Assets.total+' images)');
+  assert(Assets.total<=10,'home preloads only what it needs (<=10, got '+Assets.total+')');
   assert(UIA.get().loading===100,'loading reached 100');
 
   /* ---------- catalog ---------- */
@@ -25,6 +26,7 @@ try{
   UIA.enter('ghh');
   assert(UIA.get().screen==='game' && UIA.get().gameId==='ghh','enter(ghh) hosts the game');
   G.enterArcade(()=>UIA.exit());
+  assert(Assets.total>=50,'GHH group streams its own art on entry ('+Assets.total+')');
   assert(G.isActive()===true,'engine loop active while hosted');
   assert(UI.get().arcade===true,'GHH knows it is in arcade mode');
   Game.load(0); __tick(60);

@@ -155,20 +155,27 @@ export class DashEngine {
     const W = this.W, H = this.H, gy = this.groundY;
     const catScreen = W * 0.28;
     c.save();
-    if(this.shake > 0){
+    const reduced = window.__GAME && window.__GAME.Settings &&
+      window.__GAME.Settings.data.reduced;
+    if(this.shake > 0 && !reduced){
       c.translate((Math.random()-.5) * this.shake * 10, (Math.random()-.5) * this.shake * 10);
     }
     /* sky (cached — rebuilt only when layout changes) */
-    if(!this._sky || this._skyH !== H){
+    const warm = !!(A && A.get && A.get('dash_bg_far'));
+    if(!this._sky || this._skyH !== H || this._skyWarm !== warm){
       const sky = c.createLinearGradient(0,0,0,H);
-      sky.addColorStop(0,'#0a1024'); sky.addColorStop(.75,'#070b18'); sky.addColorStop(1,'#06080f');
-      this._sky = sky; this._skyH = H;
+      if(warm){ /* dusk clay palette — visibly NOT the heist's cyan night */
+        sky.addColorStop(0,'#2f1a4d'); sky.addColorStop(.75,'#43266b'); sky.addColorStop(1,'#1f1233');
+      }else{
+        sky.addColorStop(0,'#0a1024'); sky.addColorStop(.75,'#070b18'); sky.addColorStop(1,'#06080f');
+      }
+      this._sky = sky; this._skyH = H; this._skyWarm = warm;
     }
     c.fillStyle = this._sky; c.fillRect(-20,-20,W+40,H+40);
 
     /* parallax (mirrored loop, same trick as the heist) */
-    const far = A && A.get ? A.get('bg_far') : null;
-    const mid = A && A.get ? A.get('bg_mid') : null;
+    const far = A && A.get ? (A.get('dash_bg_far') || A.get('bg_far')) : null;
+    const mid = A && A.get ? (A.get('dash_bg_mid') || A.get('bg_mid')) : null;
     if(far) this._loopX(c, far, -this.dist * 0.10, H - Math.max(200, H*0.5) - H*0.05, Math.max(200, H*0.5));
     else { c.fillStyle = '#0d1428'; c.fillRect(0, H*0.55, W, H*0.45); }
     if(mid){
@@ -177,16 +184,22 @@ export class DashEngine {
       c.globalAlpha = 1;
     }
 
-    /* ground */
-    const face = A && A.get ? A.get('face') : null;
+    /* ground — dash uses its own clay soil + warm edge (no cyan neon strip) */
+    const dashStyle = !!(A && A.get && A.get('dash_face'));
+    const face = A && A.get ? (A.get('dash_face') || A.get('face')) : null;
     if(face){ c.fillStyle = c.createPattern(face,'repeat'); }
-    else c.fillStyle = '#0d1526';
+    else c.fillStyle = dashStyle ? '#5a3826' : '#0d1526';
     c.fillRect(-20, gy, W+40, H - gy + 20);
-    const strip = A && A.get ? A.get('plat_top') : null;
-    if(strip){
-      for(let x = -20; x < W + 40; x += 36) c.drawImage(strip, x, gy - 1, 36, 14);
+    if(dashStyle){
+      c.fillStyle = 'rgba(255,226,186,.95)'; c.fillRect(-20, gy, W+40, 3);
+      c.fillStyle = 'rgba(255,174,132,.55)'; c.fillRect(-20, gy+3, W+40, 2);
+    }else{
+      const strip = A && A.get ? A.get('plat_top') : null;
+      if(strip){
+        for(let x = -20; x < W + 40; x += 36) c.drawImage(strip, x, gy - 1, 36, 14);
+      }
+      c.fillStyle = 'rgba(150,255,247,.9)'; c.fillRect(-20, gy, W+40, 2);
     }
-    c.fillStyle = 'rgba(150,255,247,.9)'; c.fillRect(-20, gy, W+40, 2);
 
     /* obstacles */
     for(const o of this.obstacles){

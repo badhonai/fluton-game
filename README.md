@@ -19,12 +19,26 @@ games are modules with mount/unmount lifecycles over one shared engine.
 - **QA budgets** — headless op-counting asserts: `fillRect<=90`, `drawImage<=45`,
   `strokeRect<=10`, zero gradients; measured **445 → 143 ops/frame (−68%)**.
 
-## Design direction: PIXEL ARCADE (style E, chosen from the mockup round)
+## Design direction: CLAY (style B, chosen from the v3 previews)
 
-Embedded OFL pixel fonts — **Press Start 2P** (display), **Silkscreen** (UI),
-**VT323** (data) — plus a full pixel-art pass over every game asset
-(`tools/pixelate.py`: nearest-down → quantize → nearest-up, same dimensions),
-nearest-neighbour canvas sampling, hard-shadow zero-radius components.
+- **Baloo 2** (OFL, embedded) — rounded, friendly, mobile-legible.
+- **Clay components**: pill buttons with soft drop shadows + inner highlights,
+  rounded cards/panels, squishy press states — bright palette (soft navy bg,
+  pastel cyan/coral/gold), no near-black anywhere.
+- **Radix UI** (the headless foundation shadcn is built from): Dialog powers
+  pause + results (focus trap, ESC, aria), Accordion powers the briefing
+  (one section open — fits any screen), Slider + Switch power the Settings page.
+- **No-scroll rule**: every screen fits the viewport; overflow moves to
+  sections/pages (accordion briefing, dedicated Settings page, compact
+  landscape-home layout, short-screen fit queries).
+- **Settings page** (`SETTINGS` on title): volume slider, render-quality
+  slider (bean.lol-style1×/2×), sound + reduced-motion switches — persisted
+  in `arcade-settings`.
+- **Lazy asset groups**: the arcade home preloads only ~3 images (`home`),
+  each game streams its own group on entry (`ghh`=54, `dash`=13).
+- **Glass Dash has its own world**: warm dusk clay backgrounds, clay soil
+  ground with cream edge (no cyan neon), warm sky — visually distinct from
+  the heist's cyan night.
 
 ## Design system (anti-slop rules — enforced by `audit.py`)
 

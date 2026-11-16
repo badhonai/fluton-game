@@ -24,7 +24,8 @@ def run_node(parts, out_name):
 
 def run_engine(suite):
     js = extract()
-    tests = {"tests": "tests.js", "extra": "tests_extra.js", "arcade": "tests_arcade.js"}[suite]
+    tests = {"tests": "tests.js", "extra": "tests_extra.js",
+             "arcade": "tests_arcade.js", "play": "tests_play.js"}[suite]
     stubs = open(os.path.join(QA, "stubs.js")).read()
     body = open(os.path.join(QA, tests)).read()
     return run_node([stubs, js, body], "_run_%s.js" % suite)
@@ -49,6 +50,7 @@ def main():
     if suite in ("tests", "all"): rc |= run_engine("tests")
     if suite in ("extra", "all"): rc |= run_engine("extra")
     if suite in ("arcade", "all"): rc |= run_engine("arcade")
+    if suite in ("play", "all"): rc |= run_engine("play")
     if suite in ("smoke", "all"): rc |= run_smoke()
     sys.exit(rc)
 

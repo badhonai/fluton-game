@@ -368,10 +368,109 @@ window.GHH_MANIFEST={
    "ay": 1.0,
    "w": 188,
    "h": 300
+  },
+  "dash_bg_far": {
+   "file": "assets/backgrounds/dash_bg_far.png",
+   "ax": 0.5,
+   "ay": 0.5,
+   "w": 1400,
+   "h": 597
+  },
+  "dash_bg_mid": {
+   "file": "assets/backgrounds/dash_bg_mid.png",
+   "ax": 0.5,
+   "ay": 0.5,
+   "w": 1400,
+   "h": 466
+  },
+  "dash_face": {
+   "file": "assets/env/dash_face.png",
+   "ax": 0.5,
+   "ay": 0.5,
+   "w": 512,
+   "h": 512
   }
  },
  "cat": {
   "drawH": 54
  },
- "ver": 2
+ "ver": 2,
+ "groups": {
+  "home": [
+   "bg_title",
+   "cat_wave",
+   "star"
+  ],
+  "dash": [
+   "cat_fall",
+   "cat_hurt",
+   "cat_jump",
+   "cat_run1",
+   "cat_run2",
+   "cat_run3",
+   "dash_bg_far",
+   "dash_bg_mid",
+   "dash_face",
+   "fx_dust",
+   "fx_spark",
+   "note",
+   "yarn"
+  ],
+  "ghh": [
+   "bg_far",
+   "bg_mid",
+   "bg_title",
+   "bot",
+   "bot_alert",
+   "bot_distract",
+   "cat_fall",
+   "cat_hurt",
+   "cat_idle",
+   "cat_jump",
+   "cat_land",
+   "cat_run1",
+   "cat_run2",
+   "cat_run3",
+   "cat_sit",
+   "cat_throw",
+   "cat_wave",
+   "cat_win",
+   "cell",
+   "drone",
+   "face",
+   "fx_burst",
+   "fx_cross",
+   "fx_dots",
+   "fx_dust",
+   "fx_glitch",
+   "fx_plus",
+   "fx_ring",
+   "fx_spark",
+   "note",
+   "plat_top",
+   "prop_cone",
+   "prop_glass",
+   "prop_pipe",
+   "prop_plant",
+   "prop_rack",
+   "prop_sign",
+   "star",
+   "turret",
+   "turret_alert",
+   "ui_clock",
+   "ui_eye",
+   "ui_heart",
+   "ui_home",
+   "ui_lock",
+   "ui_mute",
+   "ui_pause",
+   "ui_play",
+   "ui_replay",
+   "ui_sound",
+   "ui_star",
+   "ui_star_empty",
+   "vault",
+   "yarn"
+  ]
+ }
 };

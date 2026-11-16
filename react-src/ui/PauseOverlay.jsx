@@ -1,16 +1,20 @@
 import { G } from '../store.js';
 import { Icon } from './icons.jsx';
 import FullscreenBtn from './FullscreenBtn.jsx';
+import * as Dialog from '@radix-ui/react-dialog';
 
+/* Pause = Radix Dialog (focus trap, ESC, aria-modal for free) */
 export default function PauseOverlay({ st }){
   const g = G();
+  const open = st.screen === 'pause';
   return (
-    <div className="screen" id="scr-pause">
-      <div className="pausecard">
-        <h2>PAUSED</h2>
+    <Dialog.Root open={open} onOpenChange={o => { if(!o) g.actions.resume(); }}>
+      <Dialog.Overlay className="dlg-overlay"/>
+      <Dialog.Content className="pausecard dlg-card" aria-label="Paused">
+        <Dialog.Title className="pause-title">PAUSED</Dialog.Title>
         <div className="ctrl-line">
           <kbd>A D</kbd> move · <kbd>SPACE</kbd> jump<br/>
-          <kbd>E</kbd>/<kbd>SHIFT</kbd> encrypt · <kbd>Q</kbd> yarn · <kbd>R</kbd> restart
+          <kbd>E</kbd>/<kbd>SHIFT</kbd> encrypt · <kbd>Q</kbd> yarn · <kbd>P</kbd> restart
         </div>
         <button className="btn primary" id="bResume" onClick={() => g.actions.resume()}>
           <Icon name="play" size={14} fill/> RESUME
@@ -34,7 +38,7 @@ export default function PauseOverlay({ st }){
           </button>
           <FullscreenBtn/>
         </div>
-      </div>
-    </div>
+      </Dialog.Content>
+    </Dialog.Root>
   );
 }

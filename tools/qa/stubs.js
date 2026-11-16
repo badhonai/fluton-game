@@ -32,6 +32,7 @@ function mkEl(tag){
     appendChild(c){this.children.push(c);return c;},
     querySelectorAll(){return [];},querySelector(){return null;},focus(){},
     getContext(){return mkCtx();},
+    clientWidth:0,clientHeight:0,
     onclick:null};
   return el;
 }
@@ -62,6 +63,9 @@ global.window={
   AudioContext:undefined, webkitAudioContext:undefined, console
 };
 global.navigator={userAgent:'headless'};
+/* Radix Dialog (react-remove-scroll) reads computed styles in headless */
+global.getComputedStyle = () => ({ getPropertyValue: () => '0px' });
+global.window.getComputedStyle = global.getComputedStyle;
 /* fullscreen API stubs (auto-rotate: orientation.lock must be attempted) */
 global.screen={orientation:{locked:null,lock(mode){this.locked=mode;return Promise.resolve();}}};
 const __fsDoc = global.document;

@@ -89,7 +89,8 @@ export default function HomeScreen({ st }){
         </section>
 
         <footer className="arcade-foot">
-          a FLUTON project · one engine, one QA harness, one cat —
+          progress: {g.store.data.unlocked}/{g.LEVELS.length} levels · {totalStars()}/15 stars
+          &nbsp;·&nbsp; a FLUTON project —
           <a href="https://fluton.io" target="_blank" rel="noopener"> fluton.io</a>
         </footer>
       </div>

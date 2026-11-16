@@ -37,14 +37,22 @@ store.load();
 const MANIFEST = window.GHH_MANIFEST || {images:{},cat:{drawH:54}};
 const Assets = {
   imgs:{}, failed:{}, loaded:0, total:0, ready:false,
-  loadAll(onProgress){
+  /* lazy groups: only the requested manifest group is fetched — the arcade
+     home boots on ~3 images, each game streams its own art on entry */
+  loadAll(onProgress, group){
     const entries = Object.entries(MANIFEST.images||{});
-    this.total = entries.length;
-    if(!entries.length){ this.ready = true; return Promise.resolve(); }
-    return Promise.all(entries.map(([k,v]) => new Promise(res => {
+    const g = group && MANIFEST.groups ? MANIFEST.groups[group] : null;
+    const list = g ? entries.filter(([k]) => g.indexOf(k) >= 0) : entries;
+    this.total = list.length;
+    const fresh = list.filter(([k]) => !this.imgs[k]);
+    this.loaded = list.length - fresh.length;
+    const tick = () => onProgress && onProgress(this.loaded, this.total);
+    if(!fresh.length){ this.ready = true; tick(); return Promise.resolve(); }
+    tick();
+    return Promise.all(fresh.map(([k,v]) => new Promise(res => {
       const im = new Image();
-      im.onload  = () => { this.imgs[k]=im; this.loaded++; onProgress&&onProgress(this.loaded,this.total); res(); };
-      im.onerror = () => { this.failed[k]=v.file; this.loaded++; if(window.console)console.warn('[asset missing]',v.file); onProgress&&onProgress(this.loaded,this.total); res(); };
+      im.onload  = () => { this.imgs[k]=im; this.loaded++; tick(); res(); };
+      im.onerror = () => { this.failed[k]=v.file; this.loaded++; if(window.console)console.warn('[asset missing]',v.file); tick(); res(); };
       im.src = v.file;
     }))).then(()=>{ this.ready = true; });
   },
@@ -84,7 +92,7 @@ function drawTinted(c, im, x, y, w, h, color, alpha){
     tinted = document.createElement('canvas');
     tinted.width = tw; tinted.height = th;
     const t = tinted.getContext('2d');
-    t.imageSmoothingEnabled = false;
+    t.imageSmoothingEnabled = true;
     t.drawImage(im, 0, 0, tw, th);
     t.globalCompositeOperation = 'source-atop';
     t.globalAlpha = alpha; t.fillStyle = color;
@@ -96,9 +104,9 @@ function drawTinted(c, im, x, y, w, h, color, alpha){
 }
 
 /* ================= 2 · AUDIO ================= */
-const SFX=(()=>{let ctx=null,master=null,amb=null,muted=false;
+const SFX=(()=>{let ctx=null,master=null,amb=null,muted=false,vol=.9;
   function ensure(){if(ctx)return;try{ctx=new(window.AudioContext||window.webkitAudioContext)();
-    master=ctx.createGain();master.gain.value=.9;master.connect(ctx.destination);
+    master=ctx.createGain();master.gain.value=muted?0:vol;master.connect(ctx.destination);
     amb=ctx.createOscillator();const g=ctx.createGain();g.gain.value=0;
     amb.type='sine';amb.frequency.value=55;const lfo=ctx.createOscillator();const lg=ctx.createGain();
     lfo.frequency.value=.07;lg.gain.value=14;lfo.connect(lg);lg.connect(amb.frequency);
@@ -141,7 +149,8 @@ const SFX=(()=>{let ctx=null,master=null,amb=null,muted=false;
     win(){[523,659,784,1047].forEach((f,i)=>tone(f,f,.17,'triangle',.14,i*.11));},
     star(i){tone(700+i*220,700+i*220,.16,'triangle',.14);},
     unlock(){tone(660,660,.1,'triangle',.12);tone(880,880,.16,'triangle',.12,.1);},
-    setMuted(m){muted=m;if(master)master.gain.value=m?0:.9;},
+    setMuted(m){muted=m;if(master)master.gain.value=m?0:vol;},
+    setVolume(v){vol=Math.max(0,Math.min(1,v));if(master&&!muted)master.gain.value=vol;},
     isMuted(){return muted;}
   };return api;})();
 
@@ -158,7 +167,7 @@ const Input=(()=>{const down={},press={};
     if(e.repeat)return;gesture();
     const a=MAP[e.code];
     if(a){e.preventDefault();if(Game.state==='play'||Game.state==='title')set(a,true);}
-    if(e.code==='Escape'||e.code==='KeyP'){e.preventDefault();Game.togglePause();}
+    if(e.code==='KeyP'){e.preventDefault();Game.togglePause();}
     if(e.code==='KeyR'&&Game.state==='play')Game.load(Game.levelIdx,true);
     if(e.code==='KeyM'){e.preventDefault();toggleSound();}
   },{passive:false});
@@ -505,6 +514,20 @@ function toggleSound(){
   UI.set({muted:m});
 }
 
+/* ============ 7b · SETTINGS (persisted) ============ */
+const Settings={
+  data:{volume:.9,quality:1,reduced:false},
+  load(){try{const j=localStorage.getItem('arcade-settings');
+    if(j)Object.assign(this.data,JSON.parse(j));}catch(e){}},
+  save(){try{localStorage.setItem('arcade-settings',JSON.stringify(this.data));}catch(e){}},
+  apply(){
+    try{SFX.setVolume(this.data.volume);}catch(e){}
+    try{if(Render.cv)Render.setQuality(this.data.quality);}catch(e){}
+    try{document.body.classList.toggle('reduce-motion',!!this.data.reduced);}catch(e){}
+  },
+  set(patch){Object.assign(this.data,patch);this.save();this.apply();}
+};
+
 /* ================= 8 · WORLD SIMULATION ================= */
 function solidAt(tx,ty){const L=Game.L;
   if(tx<0||tx>=L.W)return 1;if(ty<0)return 0;if(ty>=L.H)return 0;return L.solid[ty][tx];}
@@ -794,7 +817,8 @@ const Render={
        unnecessary alpha compositing. Keep high-quality smoothing for sprites. */
     this.c=this.cv.getContext('2d',{alpha:false});
     /* pixel-arcade: nearest-neighbour sprite scaling — chunky, shimmer-free */
-    this.c.imageSmoothingEnabled=false;
+    this.c.imageSmoothingEnabled=true;
+    this.c.imageSmoothingQuality='high';
     this.resize();
     if(!this._inited){this._inited=true;window.addEventListener('resize',()=>this.resize());}
     this.makeGlow();this.makeCones();this.makeVignette();this.makeSky();
@@ -824,7 +848,7 @@ const Render={
     if(w<1||h<1||w>20000||h>8000)return;
     const cv=document.createElement('canvas');cv.width=w;cv.height=h;
     const x=cv.getContext('2d');
-    x.imageSmoothingEnabled=false;
+    x.imageSmoothingEnabled=true;
     /* world sky gradient (level-static) */
     const g=this.c.createLinearGradient(0,-100,0,h);
     g.addColorStop(0,'#0a1024');g.addColorStop(.7,'#070a16');g.addColorStop(1,'#06080f');
@@ -968,7 +992,8 @@ const Render={
     const S=this.scale;
     const ox=(this.W-this.vw*S)/2, oy=(this.H-this.vh*S)/2;
     let sx=0,sy=0;
-    if(Game.cam.shake>0){sx=(Math.random()-.5)*Game.cam.shake;sy=(Math.random()-.5)*Game.cam.shake;}
+    if(Game.cam.shake>0&&!Settings.data.reduced){
+      sx=(Math.random()-.5)*Game.cam.shake;sy=(Math.random()-.5)*Game.cam.shake;}
     c.setTransform(S*this.q,0,0,S*this.q,(ox+Game.cam.x*S+sx*S)*this.q,(oy+Game.cam.y*S+sy*S)*this.q);
     this.drawWorld(c);
     /* screen-space overlays */
@@ -1603,7 +1628,8 @@ const UI=(()=>{
 /* ================= 12 · UI WIRING ================= */
 function showScreen(id){
   const map={'scr-title':'title','scr-select':'select','scr-how':'how',
-    'scr-pause':'pause','scr-complete':'complete','scr-over':'over'};
+    'scr-settings':'settings','scr-pause':'pause',
+    'scr-complete':'complete','scr-over':'over'};
   UI.set({screen:id?(map[id]||'play'):'play'});
 }
 function setSoundLabels(){ UI.set({muted:SFX.isMuted()}); }
@@ -1613,6 +1639,7 @@ const actions={
   play(){SFX.resume();SFX.click();Game.startRun();},
   levels(){SFX.resume();SFX.click();buildLevelGrid();Game.state='select';showScreen('scr-select');},
   how(){SFX.resume();SFX.click();Game.state='how';showScreen('scr-how');},
+  settings(){SFX.resume();SFX.click();Game.state='settings';showScreen('scr-settings');},
   back(){SFX.resume();SFX.click();Game.state='title';showScreen('scr-title');buildLevelGrid();},
   sound(){SFX.resume();SFX.click();toggleSound();},
   reset(){
@@ -1663,7 +1690,8 @@ function loop(ts){
     Input.consume();syncTouch();Render.frame(dt);return;
   }
   Input.consume();syncTouch();
-  if(Game.state==='title'||Game.state==='select'||Game.state==='how')FX.update(dt);
+  if(Game.state==='title'||Game.state==='select'||Game.state==='how'||
+     Game.state==='settings')FX.update(dt);
   /* Every non-play screen fully covers the canvas — skip world rendering
      beneath it so phones don't burn fill-rate on hidden frames. The canvas
      keeps its last frame (a freeze-frame behind pause and results). */
@@ -1677,14 +1705,15 @@ function syncTouch(){
     UI.set({coarse,portrait,play});
 }
 function boot(){
+  Settings.load();
   Render.init();active=true;
-  if(booted)return;
+  if(booted){Settings.apply();return;}
   booted=true;
   uiInit();
   setSoundLabels();
   requestAnimationFrame(loop);
-  const loadP=Assets.ready?Promise.resolve():
-    Assets.loadAll((d,t)=>UI.set({loading:Math.round(d/t*100)}));
+  const loadP=Assets.loadAll(
+    (d,t)=>UI.set({loading:Math.round(d/t*100)}),'ghh');
   loadP.then(()=>{
     const elapsed=(performance&&performance.now)?performance.now():Date.now();
     setTimeout(()=>{showScreen('scr-title');buildLevelGrid();},Math.max(0,400-elapsed));
@@ -1701,8 +1730,7 @@ function leaveArcade(){
   UI.set({arcade:false,onExit:null});
 }
 function preloadAssets(onP){
-  if(Assets.ready){onP&&onP(Assets.total,Assets.total);return Promise.resolve();}
-  return Assets.loadAll(onP);
+  return Assets.loadAll(onP,'home');
 }
 function isActive(){return active;}
 
@@ -1710,4 +1738,4 @@ function isActive(){return active;}
 window.__GAME={Game,Assets,Render,Input,UI,LEVELS,LEVEL_DYN,LEVEL_DECOR,store,CFG,actions,
   SFX,FX,boot,showScreen,buildLevelGrid,setSoundLabels,toggleSound,isCoarsePortrait,
   catFrameKey,fmtTime,solidAt,losClear,inCone,dist2,drawAsset,
-  enterArcade,leaveArcade,preloadAssets,isActive};
+  enterArcade,leaveArcade,preloadAssets,isActive,Settings};

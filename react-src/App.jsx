@@ -11,6 +11,7 @@ import GameOverScreen from './ui/GameOverScreen.jsx';
 import Toast from './ui/Toast.jsx';
 import TouchControls from './ui/TouchControls.jsx';
 import RotateHint from './ui/RotateHint.jsx';
+import SettingsScreen from './ui/SettingsScreen.jsx';
 
 export default function App(){
   const st = useUI();
@@ -23,6 +24,7 @@ export default function App(){
       {st.screen === 'title'    && <TitleScreen st={st}/>}
       {st.screen === 'select'   && <LevelSelectScreen st={st}/>}
       {st.screen === 'how'      && <HowToScreen st={st}/>}
+      {st.screen === 'settings' && <SettingsScreen st={st}/>}
       {st.screen === 'pause'    && <PauseOverlay st={st}/>}
       {st.screen === 'complete' && <CompleteScreen st={st}/>}
       {st.screen === 'over'     && <GameOverScreen st={st}/>}

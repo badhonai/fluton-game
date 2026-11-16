@@ -67,7 +67,7 @@ def main():
         fails.append("src/fonts.css missing (embedded pixel fonts)")
     else:
         fc = open(fonts_css).read()
-        for fam in ("Press Start 2P", "Silkscreen", "VT323"):
+        for fam in ("Baloo 2",):
             if fam not in fc:
                 fails.append(f"fonts.css: missing @font-face for {fam}")
 
