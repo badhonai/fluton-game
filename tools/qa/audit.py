@@ -59,6 +59,18 @@ def main():
     if re.search(r'(src|href)="https?://(?!fluton)', html):
         fails.append("index.html: external resource reference (breaks offline/preview)")
 
+    # ---- pixel fonts: linked + embedded ----
+    fonts_css = os.path.join(ROOT, "src", "fonts.css")
+    if "fonts.css" not in html:
+        fails.append("index.html: fonts.css not linked")
+    if not os.path.exists(fonts_css):
+        fails.append("src/fonts.css missing (embedded pixel fonts)")
+    else:
+        fc = open(fonts_css).read()
+        for fam in ("Press Start 2P", "Silkscreen", "VT323"):
+            if fam not in fc:
+                fails.append(f"fonts.css: missing @font-face for {fam}")
+
     # ---- HUD touch overlap guard: coarse-pointer rule must exist ----
     if "@media (pointer:coarse)" not in css:
         fails.append("style.css: missing coarse-pointer adaptations")

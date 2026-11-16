@@ -5,6 +5,13 @@ platformer starring Fluton's official tuxedo-cat mascot) and **Glass Dash**
 (a one-button endless runner). Console-style home screen with game icons;
 games are modules with mount/unmount lifecycles over one shared engine.
 
+## Design direction: PIXEL ARCADE (style E, chosen from the mockup round)
+
+Embedded OFL pixel fonts — **Press Start 2P** (display), **Silkscreen** (UI),
+**VT323** (data) — plus a full pixel-art pass over every game asset
+(`tools/pixelate.py`: nearest-down → quantize → nearest-up, same dimensions),
+nearest-neighbour canvas sampling, hard-shadow zero-radius components.
+
 ## Design system (anti-slop rules — enforced by `audit.py`)
 
 - **Mobile-first**: base styles target phones; ≥640px enhances. Safe-area

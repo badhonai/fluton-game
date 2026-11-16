@@ -16,10 +16,10 @@ def inline_js(html, tag, path):
 def main():
     html = open(os.path.join(ROOT, "index.html")).read()
 
-    # inline CSS
-    css = open(os.path.join(ROOT, "src", "style.css")).read()
-    html = html.replace('<link rel="stylesheet" href="src/style.css">',
-                        "<style>\n" + css + "\n</style>")
+    # inline ALL stylesheets (fonts.css + style.css)
+    for m in list(re.finditer(r'<link rel="stylesheet" href="(src/[^"]+)">', html)):
+        css = open(os.path.join(ROOT, m.group(1))).read().replace("</style", "<\\/style")
+        html = html.replace(m.group(0), "<style>\n" + css + "\n</style>")
 
     # inline manifest (asset paths + anchors) then the React+engine bundle
     html = inline_js(html, '<script src="src/manifest.js"></script>', "src/manifest.js")
