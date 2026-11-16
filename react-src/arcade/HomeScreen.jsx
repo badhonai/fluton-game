@@ -42,8 +42,9 @@ function GameCard({ g, st, onPlay }){
 export default function HomeScreen({ st }){
   const g = ghh();
   const [muted, setMuted] = useState(() => g.SFX.isMuted());
-  const featured = GAMES.find(x => x.status === 'playable' &&
-    (st.meta.last || {})[x.id]) || GAMES[0];
+  const last = st.meta.last || {};
+  const featured = GAMES.filter(x => x.status === 'playable' && last[x.id])
+    .sort((a, b) => last[b.id] - last[a.id])[0] || GAMES[0];
   const play = id => { g.SFX.resume(); g.SFX.click(); UIA.enter(id); };
   const toggleMute = () => { g.toggleSound(); setMuted(g.SFX.isMuted()); };
   const others = GAMES.filter(x => x.id !== featured.id);

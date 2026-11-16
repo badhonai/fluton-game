@@ -246,8 +246,11 @@ export class DashEngine {
       if(x < -40 || x > W + 40) continue;
       const key = p.kind === 'yarn' ? 'yarn' : 'note';
       const img = A && A.get ? A.get(key) : null;
-      this._glow(c, x, y, p.kind === 'yarn' ? 26 : 24,
-        p.kind === 'yarn' ? '255,125,214' : '255,209,102', .5);
+      this._glow(c, x, y, p.kind === 'yarn' ? 28 : 24,
+        p.kind === 'yarn' ? '255,125,214' : '255,209,102', .75);
+      /* white sticker ring — pickups must pop on the warm violet sky */
+      c.strokeStyle = 'rgba(255,255,255,.92)'; c.lineWidth = 3;
+      c.beginPath(); c.arc(x, y, p.kind === 'yarn' ? 13 : 12, 0, 6.283); c.stroke();
       if(img){
         const s = (p.kind === 'yarn' ? 24 : 27) / img.height;
         c.drawImage(img, x - img.width*s/2, y - img.height*s/2, img.width*s, img.height*s);
