@@ -91,6 +91,21 @@ ArcadeApp ── screen router          UI store (snapshots) ← useSyncExternal
 └── dist/                 # standalone.html + index.html (Vercel entry)
 ```
 
+## Live UI audit (Playwright)
+
+Headless Chromium (installed under `/tmp` to keep the workspace lean) drives the
+real standalone build and (a) **measures every key element's bounding box**
+across 3 viewports — phone landscape 780×360, phone portrait 390×844, desktop
+1280×800 × 13 screen states — asserting nothing clips the viewport, and
+(b) captures screenshots of every screen. Scripts: `tools/qa/live/`.
+
+```bash
+PLAYWRIGHT_BROWSERS_PATH=/tmp/pwbrowsers \
+LD_LIBRARY_PATH=$(find /tmp/chromelibs -type d -name x86_64-linux-gnu | paste -sd:) \
+node tools/qa/live/fitcheck.mjs     # layout audit (fails on any overflow)
+node tools/qa/live/shots.mjs        # screenshot sweep → live-shots/
+```
+
 ## Commands
 
 ```bash
