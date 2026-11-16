@@ -64,8 +64,10 @@ g.UI.set({ hud: { level: 'L1 · THE ATRIUM', notes: '1/3', lives: 2,
 html = renderAt('play');
 ok(html.includes('id="hud"') && html.includes('id="engBar"'), 'HUD renders in play');
 ok(html.includes('1/3') && html.includes('id="hScore"'), 'HUD data present');
-ok(html.includes('id="hLives"') && html.includes('M19 14c1.49'),
-   'hearts render as Lucide heart icons');
+g.Assets.imgs.ui_heart = { width: 16, height: 16 };
+html = renderAt('play'); /* keep coarse:true — touch test follows */
+ok(html.includes('id="hLives"') && html.includes('assets/ui/heart.png'),
+   'hearts render as pixel PNG icons');
 ok(html.includes('id="touch"') && html.includes('ENCRYPT'), 'touch controls render on coarse');
 ok(html.includes('id="btnPause"'), 'pause button in HUD');
 
@@ -76,9 +78,10 @@ html = renderAt('play', { portrait: true, coarse: true });
 ok(html.includes('id="rotate"'), 'rotate hint renders in portrait');
 
 /* hearts with asset present */
+delete g.Assets.imgs.ui_heart;
 html = renderAt('play', { coarse: false });
-ok(!html.includes('ui_heart.png') && html.includes('M19 14c1.49'),
-   'hearts are vector icons — no PNG heart dependency');
+ok(html.includes('M19 14c1.49') && !html.includes('ui/heart.png'),
+   'hearts fall back to vector icons when PNG missing');
 
 /* ---------- arcade render states ---------- */
 UIA.set({ ready: false, loading: 42 });
